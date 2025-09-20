@@ -9,9 +9,9 @@ let hls;
 
 function loadExample() {
   videoUrlInput.value =
-    "https://s6.kkphimplayer6.com/20250910/YwQZX7ax/index.m3u8";
+    "https://s6.kkphimplayer6.com/20250920/SL75UDhS/index.m3u8";
   audioUrlInput.value =
-    "https://archive.org/download/weapons_movies_vi_2025/weapons_movies_vi_2025.ogg";
+    "https://archive.org/download/movie_imdb_tt35222590/movie_imdb_tt35222590.ogg";
   loadMedia();
 }
 
