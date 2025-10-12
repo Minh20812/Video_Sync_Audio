@@ -9,10 +9,12 @@ let hls;
 
 function loadExample() {
   videoUrlInput.value =
-    "https://s6.kkphimplayer6.com/20250922/0xTRGES0/index.m3u8";
+    "https://s6.kkphimplayer6.com/20250924/sOEdgdJ3/index.m3u8";
+  // "https://s6.kkphimplayer6.com/20250922/0xTRGES0/index.m3u8";
   // "https://s6.kkphimplayer6.com/20250920/SL75UDhS/index.m3u8";
   audioUrlInput.value =
-    "https://archive.org/download/s1_e1144_tv_imdb_tt0388629/s1_e1144_tv_imdb_tt0388629.ogg";
+    "https://archive.org/download/s1_e1_tv_tmdb_298698/s1_e1_tv_tmdb_298698.ogg";
+  // "https://archive.org/download/s1_e1144_tv_imdb_tt0388629/s1_e1144_tv_imdb_tt0388629.ogg";
   // "https://archive.org/download/movie_imdb_tt35222590/movie_imdb_tt35222590.ogg";
   loadMedia();
 }
