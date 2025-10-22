@@ -155,49 +155,49 @@
           name: "Tập 01",
           video: "https://s6.kkphimplayer6.com/20251003/r52S5REU/index.m3u8",
           audio:
-            "https://archive.org/download/s1_e1_tv_tmdb_286801/s1_e1_tv_tmdb_286801.ogg",
+            "https://archive.org/download/s1_e1_tv_tmdb_286801/s1_e1_tv_tmdb_286801.mp3",
         },
         {
           name: "Tập 02",
           video: "https://s6.kkphimplayer6.com/20251003/m5cGhWtC/index.m3u8",
           audio:
-            "https://archive.org/download/s1_e2_tv_tmdb_286801/s1_e2_tv_tmdb_286801.ogg",
+            "https://archive.org/download/s1_e2_tv_tmdb_286801/s1_e2_tv_tmdb_286801.mp3",
         },
         {
           name: "Tập 03",
           video: "https://s6.kkphimplayer6.com/20251003/dW2pH0Nn/index.m3u8",
           audio:
-            "https://archive.org/download/s1_e3_tv_tmdb_286801/s1_e3_tv_tmdb_286801.ogg",
+            "https://archive.org/download/s1_e3_tv_tmdb_286801/s1_e3_tv_tmdb_286801.mp3",
         },
         {
           name: "Tập 04",
           video: "https://s6.kkphimplayer6.com/20251003/V0L2O9Sk/index.m3u8",
           audio:
-            "https://archive.org/download/s1_e4_tv_tmdb_286801/s1_e4_tv_tmdb_286801.ogg",
+            "https://archive.org/download/s1_e4_tv_tmdb_286801/s1_e4_tv_tmdb_286801.mp3",
         },
         {
           name: "Tập 05",
           video: "https://s6.kkphimplayer6.com/20251003/Qdlf04h5/index.m3u8",
           audio:
-            "https://archive.org/download/s1_e5_tv_tmdb_286801/s1_e5_tv_tmdb_286801.ogg",
+            "https://archive.org/download/s1_e5_tv_tmdb_286801/s1_e5_tv_tmdb_286801.mp3",
         },
         {
           name: "Tập 06",
           video: "https://s6.kkphimplayer6.com/20251003/P5xFQbmG/index.m3u8",
           audio:
-            "https://archive.org/download/s1_e6_tv_tmdb_286801/s1_e6_tv_tmdb_286801.ogg",
+            "https://archive.org/download/s1_e6_tv_tmdb_286801/s1_e6_tv_tmdb_286801.mp3",
         },
         {
           name: "Tập 07",
           video: "https://s6.kkphimplayer6.com/20251003/DbucPcDk/index.m3u8",
           audio:
-            "https://archive.org/download/s1_e7_tv_tmdb_286801/s1_e7_tv_tmdb_286801.ogg",
+            "https://archive.org/download/s1_e7_tv_tmdb_286801/s1_e7_tv_tmdb_286801.mp3",
         },
         {
           name: "Tập 08",
           video: "https://s6.kkphimplayer6.com/20251003/MMa8wpkj/index.m3u8",
           audio:
-            "https://archive.org/download/s1_e8_tv_tmdb_286801/s1_e8_tv_tmdb_286801.ogg",
+            "https://archive.org/download/s1_e8_tv_tmdb_286801/s1_e8_tv_tmdb_286801.mp3",
         },
       ];
 
@@ -289,7 +289,21 @@
 
       video.addEventListener("seeked", () => {
         if (userSeeking) {
-          audio.currentTime = video.currentTime;
+          const videoTime = video.currentTime;
+          const adDuration = skipEnd - skipStart; // 32 giây
+
+          // Nếu tua đến thời điểm sau quảng cáo, audio phải lùi lại 32s
+          if (videoTime >= skipEnd) {
+            audio.currentTime = videoTime - adDuration;
+            console.log(
+              `🎯 Video: ${videoTime.toFixed(2)}s → Audio: ${(
+                videoTime - adDuration
+              ).toFixed(2)}s (đã trừ ${adDuration}s quảng cáo)`
+            );
+          } else {
+            // Nếu tua đến thời điểm trước quảng cáo, sync bình thường
+            audio.currentTime = videoTime;
+          }
         }
         userSeeking = false;
         isSkippingAd = false;
@@ -308,13 +322,25 @@
 
       // Manual sync
       syncBtn.onclick = () => {
-        audio.currentTime = video.currentTime;
-        status.textContent = `✅ Đã đồng bộ tại ${formatTime(
-          video.currentTime
-        )}`;
+        const videoTime = video.currentTime;
+        const adDuration = skipEnd - skipStart; // 32 giây
+
+        // Áp dụng cùng logic với tua video
+        if (videoTime >= skipEnd) {
+          audio.currentTime = videoTime - adDuration;
+          status.textContent = `✅ Đã đồng bộ: Video ${formatTime(
+            videoTime
+          )} → Audio ${formatTime(
+            videoTime - adDuration
+          )} (trừ ${adDuration}s ads)`;
+        } else {
+          audio.currentTime = videoTime;
+          status.textContent = `✅ Đã đồng bộ tại ${formatTime(videoTime)}`;
+        }
+
         setTimeout(() => {
           status.textContent = `${episodes[currentEpisode].name} - Đang phát`;
-        }, 2000);
+        }, 3000);
       };
 
       // Auto next episode
