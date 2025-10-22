@@ -1,4 +1,362 @@
 <!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Video Player - Episode Control</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+        color: #fff;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        min-height: 100vh;
+        padding: 20px;
+      }
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+      h1 {
+        text-align: center;
+        margin-bottom: 30px;
+        font-size: 2rem;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+      }
+      .player-wrapper {
+        background: rgba(0, 0, 0, 0.4);
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(10px);
+      }
+      .episode-info {
+        text-align: center;
+        margin-bottom: 15px;
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: #4fc3f7;
+      }
+      video {
+        width: 100%;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+        margin-bottom: 15px;
+      }
+      audio {
+        width: 100%;
+        margin-bottom: 15px;
+        border-radius: 8px;
+      }
+      .controls {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        justify-content: center;
+        margin-bottom: 20px;
+      }
+      button {
+        padding: 10px 20px;
+        border-radius: 8px;
+        border: none;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #fff;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 14px;
+      }
+      button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.5);
+      }
+      button:active {
+        transform: translateY(0);
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+      }
+      .episode-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 10px;
+        margin-top: 20px;
+      }
+      .episode-btn {
+        padding: 12px;
+        background: rgba(255, 255, 255, 0.1);
+        border: 2px solid transparent;
+        transition: all 0.3s ease;
+      }
+      .episode-btn:hover {
+        background: rgba(255, 255, 255, 0.2);
+        border-color: #4fc3f7;
+      }
+      .episode-btn.active {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        border-color: #f5576c;
+        box-shadow: 0 4px 15px rgba(245, 87, 108, 0.4);
+      }
+      .status {
+        text-align: center;
+        margin-top: 15px;
+        padding: 10px;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 8px;
+        font-size: 14px;
+        color: #4fc3f7;
+      }
+      .sync-info {
+        display: flex;
+        justify-content: space-around;
+        margin-top: 10px;
+        font-size: 12px;
+        color: #aaa;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🎬 Video Player Pro</h1>
+
+      <div class="player-wrapper">
+        <div class="episode-info" id="episodeInfo">Tập 01</div>
+
+        <video id="video" controls></video>
+        <audio id="audio" controls crossorigin="anonymous"></audio>
+
+        <div class="controls">
+          <button id="prevBtn">⏮️ Tập trước</button>
+          <button id="syncBtn">🔄 Đồng bộ Audio</button>
+          <button id="nextBtn">⏭️ Tập sau</button>
+        </div>
+
+        <div class="status" id="status">Đang tải...</div>
+        <div class="sync-info">
+          <span id="videoTime">Video: 0:00</span>
+          <span id="audioTime">Audio: 0:00</span>
+          <span id="drift">Drift: 0.00s</span>
+        </div>
+
+        <div class="episode-grid" id="episodeGrid"></div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script>
+      const episodes = [
+        {
+          name: "Tập 01",
+          video: "https://s6.kkphimplayer6.com/20251003/r52S5REU/index.m3u8",
+          audio:
+            "https://archive.org/download/s1_e1_tv_tmdb_286801/s1_e1_tv_tmdb_286801.ogg",
+        },
+        {
+          name: "Tập 02",
+          video: "https://s6.kkphimplayer6.com/20251003/m5cGhWtC/index.m3u8",
+          audio:
+            "https://archive.org/download/s1_e2_tv_tmdb_286801/s1_e2_tv_tmdb_286801.ogg",
+        },
+        {
+          name: "Tập 03",
+          video: "https://s6.kkphimplayer6.com/20251003/dW2pH0Nn/index.m3u8",
+          audio:
+            "https://archive.org/download/s1_e3_tv_tmdb_286801/s1_e3_tv_tmdb_286801.ogg",
+        },
+        {
+          name: "Tập 04",
+          video: "https://s6.kkphimplayer6.com/20251003/V0L2O9Sk/index.m3u8",
+          audio:
+            "https://archive.org/download/s1_e4_tv_tmdb_286801/s1_e4_tv_tmdb_286801.ogg",
+        },
+        {
+          name: "Tập 05",
+          video: "https://s6.kkphimplayer6.com/20251003/Qdlf04h5/index.m3u8",
+          audio:
+            "https://archive.org/download/s1_e5_tv_tmdb_286801/s1_e5_tv_tmdb_286801.ogg",
+        },
+        {
+          name: "Tập 06",
+          video: "https://s6.kkphimplayer6.com/20251003/P5xFQbmG/index.m3u8",
+          audio:
+            "https://archive.org/download/s1_e6_tv_tmdb_286801/s1_e6_tv_tmdb_286801.ogg",
+        },
+        {
+          name: "Tập 07",
+          video: "https://s6.kkphimplayer6.com/20251003/DbucPcDk/index.m3u8",
+          audio:
+            "https://archive.org/download/s1_e7_tv_tmdb_286801/s1_e7_tv_tmdb_286801.ogg",
+        },
+        {
+          name: "Tập 08",
+          video: "https://s6.kkphimplayer6.com/20251003/MMa8wpkj/index.m3u8",
+          audio:
+            "https://archive.org/download/s1_e8_tv_tmdb_286801/s1_e8_tv_tmdb_286801.ogg",
+        },
+      ];
+
+      const skipStart = 30; // 00:30
+      const skipEnd = 62; // 01:02
+      // const skipStart = 15 * 60; // 15:00
+      // const skipEnd = 15 * 60 + 32; // 15:32
+
+      const video = document.getElementById("video");
+      const audio = document.getElementById("audio");
+      const episodeInfo = document.getElementById("episodeInfo");
+      const status = document.getElementById("status");
+      const prevBtn = document.getElementById("prevBtn");
+      const nextBtn = document.getElementById("nextBtn");
+      const syncBtn = document.getElementById("syncBtn");
+      const episodeGrid = document.getElementById("episodeGrid");
+
+      let currentEpisode = 0;
+      let hls = null;
+      let adSkipped = false;
+      let userSeeking = false;
+      let isSkippingAd = false;
+
+      // Create episode buttons
+      episodes.forEach((ep, idx) => {
+        const btn = document.createElement("button");
+        btn.className = "episode-btn";
+        btn.textContent = ep.name;
+        btn.onclick = () => loadEpisode(idx);
+        episodeGrid.appendChild(btn);
+      });
+
+      function updateEpisodeButtons() {
+        const buttons = episodeGrid.querySelectorAll(".episode-btn");
+        buttons.forEach((btn, idx) => {
+          btn.classList.toggle("active", idx === currentEpisode);
+        });
+        prevBtn.disabled = currentEpisode === 0;
+        nextBtn.disabled = currentEpisode === episodes.length - 1;
+      }
+
+      function loadEpisode(index) {
+        if (index < 0 || index >= episodes.length) return;
+
+        currentEpisode = index;
+        const ep = episodes[index];
+
+        episodeInfo.textContent = ep.name;
+        status.textContent = `Đang tải ${ep.name}...`;
+
+        // Reset ad skip flag
+        adSkipped = false;
+
+        // Load video
+        if (hls) {
+          hls.destroy();
+        }
+
+        if (Hls.isSupported()) {
+          hls = new Hls();
+          hls.loadSource(ep.video);
+          hls.attachMedia(video);
+          hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            status.textContent = `${ep.name} - Sẵn sàng phát`;
+          });
+        } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+          video.src = ep.video;
+        }
+
+        // Load audio
+        audio.src = ep.audio;
+
+        updateEpisodeButtons();
+      }
+
+      // Navigation
+      prevBtn.onclick = () => loadEpisode(currentEpisode - 1);
+      nextBtn.onclick = () => loadEpisode(currentEpisode + 1);
+
+      // Sync controls
+      video.addEventListener("play", () => audio.play());
+      video.addEventListener("pause", () => audio.pause());
+
+      video.addEventListener("seeking", () => {
+        if (!isSkippingAd) {
+          userSeeking = true;
+        }
+      });
+
+      video.addEventListener("seeked", () => {
+        if (userSeeking) {
+          audio.currentTime = video.currentTime;
+        }
+        userSeeking = false;
+        isSkippingAd = false;
+      });
+
+      // Skip ads once per episode
+      video.addEventListener("timeupdate", () => {
+        const t = video.currentTime;
+        if (!adSkipped && t >= skipStart && t < skipEnd) {
+          console.log("⏩ Skipping ads...");
+          isSkippingAd = true;
+          adSkipped = true;
+          video.currentTime = skipEnd;
+        }
+      });
+
+      // Manual sync
+      syncBtn.onclick = () => {
+        audio.currentTime = video.currentTime;
+        status.textContent = `✅ Đã đồng bộ tại ${formatTime(
+          video.currentTime
+        )}`;
+        setTimeout(() => {
+          status.textContent = `${episodes[currentEpisode].name} - Đang phát`;
+        }, 2000);
+      };
+
+      // Auto next episode
+      video.addEventListener("ended", () => {
+        if (currentEpisode < episodes.length - 1) {
+          status.textContent = "⏭️ Tự động chuyển tập sau 3 giây...";
+          setTimeout(() => {
+            loadEpisode(currentEpisode + 1);
+            video.play();
+          }, 3000);
+        } else {
+          status.textContent = "🎉 Đã xem hết tất cả tập!";
+        }
+      });
+
+      // Display sync info
+      function formatTime(seconds) {
+        const m = Math.floor(seconds / 60);
+        const s = Math.floor(seconds % 60);
+        return `${m}:${s.toString().padStart(2, "0")}`;
+      }
+
+      setInterval(() => {
+        if (!video.paused) {
+          const drift = (video.currentTime - audio.currentTime).toFixed(2);
+          document.getElementById(
+            "videoTime"
+          ).textContent = `Video: ${formatTime(video.currentTime)}`;
+          document.getElementById(
+            "audioTime"
+          ).textContent = `Audio: ${formatTime(audio.currentTime)}`;
+          document.getElementById("drift").textContent = `Drift: ${drift}s`;
+        }
+      }, 1000);
+
+      // Load first episode
+      loadEpisode(0);
+    </script>
+  </body>
+</html>
+
+<!-- <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -51,4 +409,4 @@
 
     <script src="main.js"></script>
   </body>
-</html>
+</html> -->
