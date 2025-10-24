@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Sync Video + Audio Player</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <h1>Video + External Audio Sync Player</h1>
+
+      <label>Video M3U8 URL:</label>
+      <input id="videoUrl" type="text" placeholder="Enter M3U8 URL..." />
+
+      <label>Audio URL (mp3/ogg):</label>
+      <input id="audioUrl" type="text" placeholder="Enter audio URL..." />
+
+      <label>Or Upload Audio File: </label><br />
+      <input id="audioFile" type="file" accept="audio/*" />
+
+      <br />
+      <button onclick="loadMedia()">Load Media</button>
+      <button
+        onclick="loadExample()"
+        style="margin-bottom: 10px; background: #28a745"
+      >
+        Load Example Media
+      </button>
+
+      <video id="video" controls></video>
+      <audio id="audio"></audio>
+
+      <div class="controls">
+        <button onclick="togglePlay()">▶/⏸</button>
+        <button onclick="syncNow()">Sync Now</button>
+
+        <label
+          >Speed:
+          <select id="speed" onchange="setSpeed(this.value)">
+            <option value="0.5">0.5x</option>
+            <option value="1" selected>1x</option>
+            <option value="1.25">1.25x</option>
+            <option value="1.5">1.5x</option>
+            <option value="2">2x</option>
+          </select>
+        </label>
+        <span class="time" id="time">00:00 / 00:00</span>
+      </div>
+    </div>
+
+    <script src="main.js"></script>
+  </body>
+</html>

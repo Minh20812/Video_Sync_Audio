@@ -126,7 +126,24 @@
       <h1>🎬 Video Player Pro</h1>
 
       <div class="player-wrapper">
-        <div class="episode-info" id="episodeInfo">Tập 01</div>
+        <!-- Movie selector -->
+        <div style="margin-bottom: 15px; text-align: center">
+          <select
+            id="movieSelector"
+            style="
+              padding: 10px;
+              border-radius: 8px;
+              background: rgba(255, 255, 255, 0.1);
+              color: rgb(233, 124, 124);
+              border: 2px solid #667eea;
+              font-size: 14px;
+              cursor: pointer;
+              min-width: 250px;
+            "
+          ></select>
+        </div>
+
+        <div class="episode-info" id="episodeInfo">Đang tải...</div>
 
         <video id="video" controls></video>
         <audio id="audio" controls crossorigin="anonymous"></audio>
@@ -150,62 +167,39 @@
 
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script>
-      const episodes = [
-        {
-          name: "Tập 01",
-          video: "https://s6.kkphimplayer6.com/20251003/r52S5REU/index.m3u8",
-          audio:
-            "https://archive.org/download/s1_e1_tv_tmdb_286801/s1_e1_tv_tmdb_286801.ogg",
-        },
-        {
-          name: "Tập 02",
-          video: "https://s6.kkphimplayer6.com/20251003/m5cGhWtC/index.m3u8",
-          audio:
-            "https://archive.org/download/s1_e2_tv_tmdb_286801/s1_e2_tv_tmdb_286801.ogg",
-        },
-        {
-          name: "Tập 03",
-          video: "https://s6.kkphimplayer6.com/20251003/dW2pH0Nn/index.m3u8",
-          audio:
-            "https://archive.org/download/s1_e3_tv_tmdb_286801/s1_e3_tv_tmdb_286801.ogg",
-        },
-        {
-          name: "Tập 04",
-          video: "https://s6.kkphimplayer6.com/20251003/V0L2O9Sk/index.m3u8",
-          audio:
-            "https://archive.org/download/s1_e4_tv_tmdb_286801/s1_e4_tv_tmdb_286801.ogg",
-        },
-        {
-          name: "Tập 05",
-          video: "https://s6.kkphimplayer6.com/20251003/Qdlf04h5/index.m3u8",
-          audio:
-            "https://archive.org/download/s1_e5_tv_tmdb_286801/s1_e5_tv_tmdb_286801.ogg",
-        },
-        {
-          name: "Tập 06",
-          video: "https://s6.kkphimplayer6.com/20251003/P5xFQbmG/index.m3u8",
-          audio:
-            "https://archive.org/download/s1_e6_tv_tmdb_286801/s1_e6_tv_tmdb_286801.ogg",
-        },
-        {
-          name: "Tập 07",
-          video: "https://s6.kkphimplayer6.com/20251003/DbucPcDk/index.m3u8",
-          audio:
-            "https://archive.org/download/s1_e7_tv_tmdb_286801/s1_e7_tv_tmdb_286801.ogg",
-        },
-        {
-          name: "Tập 08",
-          video: "https://s6.kkphimplayer6.com/20251003/MMa8wpkj/index.m3u8",
-          audio:
-            "https://archive.org/download/s1_e8_tv_tmdb_286801/s1_e8_tv_tmdb_286801.ogg",
-        },
-      ];
+      // ===== CONFIGURATION =====
+      const CONFIG = {
+        // Danh sách các phim
+        movies: [
+          {
+            name: "Quái vật: Câu Chuyện Của Ed Gein",
+            apiUrl: "https://phimapi.com/tmdb/tv/286801",
+            tmdbId: "286801",
+            skipStart: 30,
+            skipEnd: 62,
+          },
+          {
+            name: "Bí Mật Triệu Đô",
+            apiUrl: "https://phimapi.com/tmdb/tv/285205",
+            tmdbId: "285205",
+            skipStart: 15 * 60,
+            skipEnd: 15 * 60 + 32,
+          },
+          {
+            name: "Nguyên Tội Của Takopi",
+            apiUrl: "https://phimapi.com/tmdb/tv/284445",
+            tmdbId: "284445",
+            skipStart: 30,
+            skipEnd: 62,
+          },
+        ],
+        currentMovieIndex: 0, // Phim đang xem
+      };
 
-      const skipStart = 30; // 00:30
-      const skipEnd = 62; // 01:02
-      // const skipStart = 15 * 60; // 15:00
-      // const skipEnd = 15 * 60 + 32; // 15:32
+      let skipStart = CONFIG.movies[CONFIG.currentMovieIndex].skipStart;
+      let skipEnd = CONFIG.movies[CONFIG.currentMovieIndex].skipEnd;
 
+      let episodes = [];
       const video = document.getElementById("video");
       const audio = document.getElementById("audio");
       const episodeInfo = document.getElementById("episodeInfo");
@@ -214,6 +208,7 @@
       const nextBtn = document.getElementById("nextBtn");
       const syncBtn = document.getElementById("syncBtn");
       const episodeGrid = document.getElementById("episodeGrid");
+      const movieSelector = document.getElementById("movieSelector");
 
       let currentEpisode = 0;
       let hls = null;
@@ -221,14 +216,82 @@
       let userSeeking = false;
       let isSkippingAd = false;
 
+      // ===== POPULATE MOVIE SELECTOR =====
+      function initMovieSelector() {
+        CONFIG.movies.forEach((movie, index) => {
+          const option = document.createElement("option");
+          option.value = index;
+          option.textContent = movie.name;
+          movieSelector.appendChild(option);
+        });
+
+        movieSelector.value = CONFIG.currentMovieIndex;
+        movieSelector.addEventListener("change", (e) => {
+          CONFIG.currentMovieIndex = parseInt(e.target.value);
+          const movie = CONFIG.movies[CONFIG.currentMovieIndex];
+          skipStart = movie.skipStart;
+          skipEnd = movie.skipEnd;
+          fetchEpisodes();
+        });
+      }
+
+      // ===== FETCH DATA FROM API =====
+      async function fetchEpisodes() {
+        try {
+          const currentMovie = CONFIG.movies[CONFIG.currentMovieIndex];
+          status.textContent = "🔄 Đang tải dữ liệu từ API...";
+
+          const response = await fetch(currentMovie.apiUrl);
+          if (!response.ok)
+            throw new Error(`HTTP error! status: ${response.status}`);
+
+          const data = await response.json();
+
+          if (!data.status || !data.episodes || data.episodes.length === 0) {
+            throw new Error("Không tìm thấy dữ liệu tập phim");
+          }
+
+          // Lấy TMDB ID từ dữ liệu
+          const tmdbId = data.movie?.tmdb?.id || currentMovie.tmdbId;
+          const season = data.movie?.tmdb?.season || 1;
+
+          // Lấy server đầu tiên (thường là server chất lượng tốt nhất)
+          const serverData = data.episodes[0].server_data;
+
+          // Xử lý dữ liệu thành format phù hợp
+          episodes = serverData.map((ep, index) => {
+            const episodeNum = index + 1;
+            return {
+              name: ep.name,
+              video: ep.link_m3u8,
+              audio: `https://archive.org/download/s${season}_e${episodeNum}_tv_tmdb_${tmdbId}/s${season}_e${episodeNum}_tv_tmdb_${tmdbId}.ogg`,
+            };
+          });
+
+          console.log("✅ Đã tải", episodes.length, "tập phim");
+          console.log("📺 TMDB ID:", tmdbId);
+          console.log("🎬 Season:", season);
+
+          createEpisodeButtons();
+          loadEpisode(0);
+        } catch (error) {
+          console.error("❌ Lỗi khi tải dữ liệu:", error);
+          status.textContent = `❌ Lỗi: ${error.message}`;
+          status.style.color = "#ff6b6b";
+        }
+      }
+
       // Create episode buttons
-      episodes.forEach((ep, idx) => {
-        const btn = document.createElement("button");
-        btn.className = "episode-btn";
-        btn.textContent = ep.name;
-        btn.onclick = () => loadEpisode(idx);
-        episodeGrid.appendChild(btn);
-      });
+      function createEpisodeButtons() {
+        episodeGrid.innerHTML = ""; // Clear existing buttons
+        episodes.forEach((ep, idx) => {
+          const btn = document.createElement("button");
+          btn.className = "episode-btn";
+          btn.textContent = ep.name;
+          btn.onclick = () => loadEpisode(idx);
+          episodeGrid.appendChild(btn);
+        });
+      }
 
       function updateEpisodeButtons() {
         const buttons = episodeGrid.querySelectorAll(".episode-btn");
@@ -290,9 +353,9 @@
       video.addEventListener("seeked", () => {
         if (userSeeking) {
           const videoTime = video.currentTime;
-          const adDuration = skipEnd - skipStart; // 32 giây
+          const adDuration = skipEnd - skipStart;
 
-          // Nếu tua đến thời điểm sau quảng cáo, audio phải lùi lại 32s
+          // Nếu tua đến thời điểm sau quảng cáo, audio phải lùi lại
           if (videoTime >= skipEnd) {
             audio.currentTime = videoTime - adDuration;
             console.log(
@@ -323,7 +386,7 @@
       // Manual sync
       syncBtn.onclick = () => {
         const videoTime = video.currentTime;
-        const adDuration = skipEnd - skipStart; // 32 giây
+        const adDuration = skipEnd - skipStart;
 
         // Áp dụng cùng logic với tua video
         if (videoTime >= skipEnd) {
@@ -376,63 +439,10 @@
         }
       }, 1000);
 
-      // Load first episode
-      loadEpisode(0);
+      // ===== INITIALIZE =====
+      // Load data from API on startup
+      initMovieSelector();
+      fetchEpisodes();
     </script>
   </body>
 </html>
-
-<!-- <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Sync Video + Audio Player</title>
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-    <link rel="stylesheet" href="styles.css" />
-  </head>
-  <body>
-    <div class="container">
-      <h1>Video + External Audio Sync Player</h1>
-
-      <label>Video M3U8 URL:</label>
-      <input id="videoUrl" type="text" placeholder="Enter M3U8 URL..." />
-
-      <label>Audio URL (mp3/ogg):</label>
-      <input id="audioUrl" type="text" placeholder="Enter audio URL..." />
-
-      <label>Or Upload Audio File: </label><br />
-      <input id="audioFile" type="file" accept="audio/*" />
-
-      <br />
-      <button onclick="loadMedia()">Load Media</button>
-      <button
-        onclick="loadExample()"
-        style="margin-bottom: 10px; background: #28a745"
-      >
-        Load Example Media
-      </button>
-
-      <video id="video" controls></video>
-      <audio id="audio"></audio>
-
-      <div class="controls">
-        <button onclick="togglePlay()">▶/⏸</button>
-        <button onclick="syncNow()">Sync Now</button>
-
-        <label
-          >Speed:
-          <select id="speed" onchange="setSpeed(this.value)">
-            <option value="0.5">0.5x</option>
-            <option value="1" selected>1x</option>
-            <option value="1.25">1.25x</option>
-            <option value="1.5">1.5x</option>
-            <option value="2">2x</option>
-          </select>
-        </label>
-        <span class="time" id="time">00:00 / 00:00</span>
-      </div>
-    </div>
-
-    <script src="main.js"></script>
-  </body>
-</html> -->
