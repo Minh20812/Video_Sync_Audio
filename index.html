@@ -199,8 +199,15 @@
             skipStart: 28,
             skipEnd: 60,
           },
+          {
+            name: "Người Phụ Nữ Trong Cabin 10",
+            apiUrl: "https://phimapi.com/tmdb/movie/1290879",
+            tmdbId: "1290879",
+            skipStart: 30,
+            skipEnd: 62,
+          },
         ],
-        currentMovieIndex: 3, // Phim đang xem
+        currentMovieIndex: 4, // Phim đang xem
       };
 
       let skipStart = CONFIG.movies[CONFIG.currentMovieIndex].skipStart;
@@ -266,18 +273,36 @@
           const serverData = data.episodes[0].server_data;
 
           // Xử lý dữ liệu thành format phù hợp
-          episodes = serverData.map((ep, index) => {
-            const episodeNum = index + 1;
-            return {
-              name: ep.name,
-              video: ep.link_m3u8,
-              audio: `https://archive.org/download/s${season}_e${episodeNum}_tv_tmdb_${tmdbId}/s${season}_e${episodeNum}_tv_tmdb_${tmdbId}.ogg`,
-            };
-          });
+          const isMovie = currentMovie.apiUrl.includes("/movie/");
 
-          console.log("✅ Đã tải", episodes.length, "tập phim");
+          if (isMovie) {
+            // Đối với movie, chỉ có 1 tập
+            episodes = [
+              {
+                name: serverData[0].name,
+                video: serverData[0].link_m3u8,
+                audio: `https://archive.org/download/movie_tmdb_${tmdbId}/movie_tmdb_${tmdbId}.ogg`,
+              },
+            ];
+          } else {
+            // Đối với TV show, nhiều tập
+            episodes = serverData.map((ep, index) => {
+              const episodeNum = index + 1;
+              return {
+                name: ep.name,
+                video: ep.link_m3u8,
+                audio: `https://archive.org/download/s${season}_e${episodeNum}_tv_tmdb_${tmdbId}/s${season}_e${episodeNum}_tv_tmdb_${tmdbId}.ogg`,
+              };
+            });
+          }
+
+          console.log(
+            "✅ Đã tải",
+            episodes.length,
+            isMovie ? "phim" : "tập phim"
+          );
           console.log("📺 TMDB ID:", tmdbId);
-          console.log("🎬 Season:", season);
+          if (!isMovie) console.log("🎬 Season:", season);
 
           createEpisodeButtons();
           loadEpisode(0);
