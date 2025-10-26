@@ -119,6 +119,16 @@
         font-size: 12px;
         color: #aaa;
       }
+      select {
+        padding: 10px;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.1);
+        color: #e97c7c;
+        border: 2px solid #667eea;
+        font-size: 14px;
+        cursor: pointer;
+        min-width: 250px;
+      }
     </style>
   </head>
   <body>
@@ -126,21 +136,8 @@
       <h1>🎬 Video Player Pro</h1>
 
       <div class="player-wrapper">
-        <!-- Movie selector -->
         <div style="margin-bottom: 15px; text-align: center">
-          <select
-            id="movieSelector"
-            style="
-              padding: 10px;
-              border-radius: 8px;
-              background: rgba(255, 255, 255, 0.1);
-              color: rgb(233, 124, 124);
-              border: 2px solid #667eea;
-              font-size: 14px;
-              cursor: pointer;
-              min-width: 250px;
-            "
-          ></select>
+          <select id="movieSelector"></select>
         </div>
 
         <div class="episode-info" id="episodeInfo">Đang tải...</div>
@@ -167,9 +164,16 @@
 
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script>
-      // ===== CONFIGURATION =====
-      const CONFIG = {
-        // Danh sách các phim
+      // ===== CONFIG - SỬ DỤNG GITHUB RAW URL =====
+      // Option 1: GitHub Raw (cập nhật ngay lập tức)
+      const CONFIG_URL =
+        "https://raw.githubusercontent.com/Minh20812/NoteBook_YT_thuyetminh/main/config.json";
+
+      // Option 2: jsDelivr CDN (nhanh hơn, cache 12h)
+      // const CONFIG_URL = 'https://cdn.jsdelivr.net/gh/Minh20812/NoteBook_YT_thuyetminh@main/config.json';
+
+      // Fallback config nếu không load được
+      const FALLBACK_CONFIG = {
         movies: [
           {
             name: "Quái vật: Câu Chuyện Của Ed Gein",
@@ -182,80 +186,22 @@
             name: "Bí Mật Triệu Đô",
             apiUrl: "https://phimapi.com/tmdb/tv/285205",
             tmdbId: "285205",
-            skipStart: 15 * 60,
-            skipEnd: 15 * 60 + 32,
-          },
-          {
-            name: "Nguyên Tội Của Takopi",
-            apiUrl: "https://phimapi.com/tmdb/tv/284445",
-            tmdbId: "284445",
-            skipStart: 30,
-            skipEnd: 62,
-          },
-          {
-            name: "Hiện Trường Vụ Án Số 0",
-            apiUrl: "https://phimapi.com/tmdb/tv/298698",
-            tmdbId: "298698",
-            skipStart: 28,
-            skipEnd: 60,
-          },
-          {
-            name: "Người Phụ Nữ Trong Cabin 10",
-            apiUrl: "https://phimapi.com/tmdb/movie/1290879",
-            tmdbId: "1290879",
-            skipStart: 30,
-            skipEnd: 62,
-          },
-          {
-            name: "Swim To Me",
-            apiUrl: "https://phimapi.com/tmdb/movie/1484640",
-            tmdbId: "1484640",
-            skipStart: 28,
-            skipEnd: 60,
-          },
-          {
-            name: "Quái Vật Thành Florence",
-            apiUrl: "https://phimapi.com/tmdb/tv/247756",
-            tmdbId: "247756",
-            skipStart: 15 * 60 + 1,
-            skipEnd: 15 * 60 + 33,
-          },
-          {
-            name: "Bậc Thầy Giải Hòa",
-            apiUrl: "https://phimapi.com/tmdb/tv/286198",
-            tmdbId: "286198",
-            skipStart: 28,
-            skipEnd: 60,
-          },
-          {
-            name: "Tin Tốt Lành",
-            apiUrl: "https://phimapi.com/tmdb/movie/1296404",
-            tmdbId: "1296404",
-            skipStart: 15 * 60 + 2,
-            skipEnd: 15 * 60 + 33,
-          },
-          {
-            name: "Tân Binh",
-            apiUrl: "https://phimapi.com/tmdb/tv/225647",
-            tmdbId: "225647",
-            skipStart: 28,
-            skipEnd: 60,
-          },
-          {
-            name: "Hồi Hồn Kế",
-            apiUrl: "https://phimapi.com/tmdb/tv/252135",
-            tmdbId: "252135",
-            skipStart: 28,
-            skipEnd: 60,
+            skipStart: 900,
+            skipEnd: 932,
           },
         ],
-        currentMovieIndex: 6, // Phim đang xem
+        currentMovieIndex: 0,
       };
 
-      let skipStart = CONFIG.movies[CONFIG.currentMovieIndex].skipStart;
-      let skipEnd = CONFIG.movies[CONFIG.currentMovieIndex].skipEnd;
-
+      let CONFIG = null;
+      let skipStart, skipEnd;
       let episodes = [];
+      let currentEpisode = 0;
+      let hls = null;
+      let adSkipped = false;
+      let userSeeking = false;
+      let isSkippingAd = false;
+
       const video = document.getElementById("video");
       const audio = document.getElementById("audio");
       const episodeInfo = document.getElementById("episodeInfo");
@@ -266,14 +212,60 @@
       const episodeGrid = document.getElementById("episodeGrid");
       const movieSelector = document.getElementById("movieSelector");
 
-      let currentEpisode = 0;
-      let hls = null;
-      let adSkipped = false;
-      let userSeeking = false;
-      let isSkippingAd = false;
+      // ===== LOAD CONFIG =====
+      async function loadConfig() {
+        try {
+          status.textContent = "⏳ Đang tải cấu hình từ GitHub...";
 
-      // ===== POPULATE MOVIE SELECTOR =====
+          const response = await fetch(CONFIG_URL, {
+            cache: "no-cache",
+            headers: {
+              Accept: "application/json",
+            },
+          });
+
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+          const rawData = await response.json();
+
+          // Chuyển đổi format từ opensubtitles_data.json
+          if (rawData.movies) {
+            // Format chuẩn
+            CONFIG = rawData;
+          } else {
+            // Format từ opensubtitles_data.json (object với key là tên phim)
+            CONFIG = {
+              movies: Object.entries(rawData).map(([name, data]) => ({
+                name: name,
+                apiUrl: data.api_url,
+                tmdbId: data.tmdb_id,
+                skipStart: data.skip_start,
+                skipEnd: data.skip_end,
+              })),
+              currentMovieIndex: 0,
+            };
+            console.log("🔄 Đã chuyển đổi format từ opensubtitles_data.json");
+          }
+
+          console.log("✅ Đã tải", CONFIG.movies.length, "phim từ GitHub");
+          status.textContent = `✅ Đã tải ${CONFIG.movies.length} phim`;
+        } catch (error) {
+          console.warn("⚠️ Lỗi tải config:", error.message);
+          console.log("📦 Sử dụng config dự phòng");
+          CONFIG = FALLBACK_CONFIG;
+          status.textContent = "⚠️ Dùng config dự phòng";
+        }
+
+        const movie = CONFIG.movies[CONFIG.currentMovieIndex];
+        skipStart = movie.skipStart;
+        skipEnd = movie.skipEnd;
+
+        initMovieSelector();
+        fetchEpisodes();
+      }
+
       function initMovieSelector() {
+        movieSelector.innerHTML = "";
         CONFIG.movies.forEach((movie, index) => {
           const option = document.createElement("option");
           option.value = index;
@@ -291,7 +283,6 @@
         });
       }
 
-      // ===== FETCH DATA FROM API =====
       async function fetchEpisodes() {
         try {
           const currentMovie = CONFIG.movies[CONFIG.currentMovieIndex];
@@ -307,18 +298,12 @@
             throw new Error("Không tìm thấy dữ liệu tập phim");
           }
 
-          // Lấy TMDB ID từ dữ liệu
           const tmdbId = data.movie?.tmdb?.id || currentMovie.tmdbId;
           const season = data.movie?.tmdb?.season || 1;
-
-          // Lấy server đầu tiên (thường là server chất lượng tốt nhất)
           const serverData = data.episodes[0].server_data;
-
-          // Xử lý dữ liệu thành format phù hợp
           const isMovie = currentMovie.apiUrl.includes("/movie/");
 
           if (isMovie) {
-            // Đối với movie, chỉ có 1 tập
             episodes = [
               {
                 name: serverData[0].name,
@@ -327,7 +312,6 @@
               },
             ];
           } else {
-            // Đối với TV show, nhiều tập
             episodes = serverData.map((ep, index) => {
               const episodeNum = index + 1;
               return {
@@ -343,9 +327,6 @@
             episodes.length,
             isMovie ? "phim" : "tập phim"
           );
-          console.log("📺 TMDB ID:", tmdbId);
-          if (!isMovie) console.log("🎬 Season:", season);
-
           createEpisodeButtons();
           loadEpisode(0);
         } catch (error) {
@@ -355,9 +336,8 @@
         }
       }
 
-      // Create episode buttons
       function createEpisodeButtons() {
-        episodeGrid.innerHTML = ""; // Clear existing buttons
+        episodeGrid.innerHTML = "";
         episodes.forEach((ep, idx) => {
           const btn = document.createElement("button");
           btn.className = "episode-btn";
@@ -384,14 +364,9 @@
 
         episodeInfo.textContent = ep.name;
         status.textContent = `Đang tải ${ep.name}...`;
-
-        // Reset ad skip flag
         adSkipped = false;
 
-        // Load video
-        if (hls) {
-          hls.destroy();
-        }
+        if (hls) hls.destroy();
 
         if (Hls.isSupported()) {
           hls = new Hls();
@@ -404,49 +379,40 @@
           video.src = ep.video;
         }
 
-        // Load audio
         audio.src = ep.audio;
-
         updateEpisodeButtons();
       }
 
-      // Navigation
       prevBtn.onclick = () => loadEpisode(currentEpisode - 1);
       nextBtn.onclick = () => loadEpisode(currentEpisode + 1);
 
-      // Sync controls
       video.addEventListener("play", () => audio.play());
       video.addEventListener("pause", () => audio.pause());
 
       video.addEventListener("seeking", () => {
-        if (!isSkippingAd) {
-          userSeeking = true;
-        }
+        if (!isSkippingAd) userSeeking = true;
       });
 
       video.addEventListener("seeked", () => {
         if (userSeeking) {
-          const videoTime = video.currentTime;
+          const t = video.currentTime;
           const adDuration = skipEnd - skipStart;
 
-          // Nếu tua đến thời điểm sau quảng cáo, audio phải lùi lại
-          if (videoTime >= skipEnd) {
-            audio.currentTime = videoTime - adDuration;
+          if (t >= skipEnd) {
+            audio.currentTime = t - adDuration;
             console.log(
-              `🎯 Video: ${videoTime.toFixed(2)}s → Audio: ${(
-                videoTime - adDuration
-              ).toFixed(2)}s (đã trừ ${adDuration}s quảng cáo)`
+              `🎯 Sync: Video ${t.toFixed(2)}s → Audio ${(
+                t - adDuration
+              ).toFixed(2)}s`
             );
           } else {
-            // Nếu tua đến thời điểm trước quảng cáo, sync bình thường
-            audio.currentTime = videoTime;
+            audio.currentTime = t;
           }
         }
         userSeeking = false;
         isSkippingAd = false;
       });
 
-      // Skip ads once per episode
       video.addEventListener("timeupdate", () => {
         const t = video.currentTime;
         if (!adSkipped && t >= skipStart && t < skipEnd) {
@@ -457,22 +423,18 @@
         }
       });
 
-      // Manual sync
       syncBtn.onclick = () => {
-        const videoTime = video.currentTime;
+        const t = video.currentTime;
         const adDuration = skipEnd - skipStart;
 
-        // Áp dụng cùng logic với tua video
-        if (videoTime >= skipEnd) {
-          audio.currentTime = videoTime - adDuration;
-          status.textContent = `✅ Đã đồng bộ: Video ${formatTime(
-            videoTime
-          )} → Audio ${formatTime(
-            videoTime - adDuration
-          )} (trừ ${adDuration}s ads)`;
+        if (t >= skipEnd) {
+          audio.currentTime = t - adDuration;
+          status.textContent = `✅ Đồng bộ: Video ${formatTime(
+            t
+          )} → Audio ${formatTime(t - adDuration)}`;
         } else {
-          audio.currentTime = videoTime;
-          status.textContent = `✅ Đã đồng bộ tại ${formatTime(videoTime)}`;
+          audio.currentTime = t;
+          status.textContent = `✅ Đã đồng bộ tại ${formatTime(t)}`;
         }
 
         setTimeout(() => {
@@ -480,7 +442,6 @@
         }, 3000);
       };
 
-      // Auto next episode
       video.addEventListener("ended", () => {
         if (currentEpisode < episodes.length - 1) {
           status.textContent = "⏭️ Tự động chuyển tập sau 3 giây...";
@@ -493,7 +454,6 @@
         }
       });
 
-      // Display sync info
       function formatTime(seconds) {
         const m = Math.floor(seconds / 60);
         const s = Math.floor(seconds % 60);
@@ -513,10 +473,8 @@
         }
       }, 1000);
 
-      // ===== INITIALIZE =====
-      // Load data from API on startup
-      initMovieSelector();
-      fetchEpisodes();
+      // ===== START APP =====
+      loadConfig();
     </script>
   </body>
 </html>
