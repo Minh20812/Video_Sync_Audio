@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Video Player - Episode Control</title>
+    <title>Movie Library</title>
     <style>
       * {
         box-sizing: border-box;
@@ -18,15 +18,195 @@
         padding: 20px;
       }
       .container {
-        max-width: 1200px;
+        max-width: 1400px;
         margin: 0 auto;
       }
-      h1 {
+
+      /* Header */
+      .header {
         text-align: center;
-        margin-bottom: 30px;
-        font-size: 2rem;
-        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        margin-bottom: 40px;
       }
+      .header h1 {
+        font-size: 2.5rem;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        margin-bottom: 10px;
+      }
+      .back-btn {
+        display: inline-block;
+        padding: 10px 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #fff;
+        text-decoration: none;
+        border-radius: 8px;
+        font-weight: 600;
+        margin-bottom: 20px;
+        cursor: pointer;
+        border: none;
+        font-size: 14px;
+        transition: all 0.3s ease;
+      }
+      .back-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.5);
+      }
+
+      /* Loading & Error */
+      .loading {
+        text-align: center;
+        padding: 50px;
+        font-size: 1.5rem;
+        color: #4fc3f7;
+      }
+      .error {
+        text-align: center;
+        padding: 50px;
+        font-size: 1.2rem;
+        color: #ff6b6b;
+        background: rgba(255, 107, 107, 0.1);
+        border-radius: 12px;
+        margin: 20px 0;
+      }
+
+      /* Movie Grid */
+      .movie-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 25px;
+        margin-top: 20px;
+      }
+      .movie-card {
+        background: rgba(0, 0, 0, 0.4);
+        border-radius: 12px;
+        overflow: hidden;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        backdrop-filter: blur(10px);
+        border: 2px solid transparent;
+        position: relative;
+      }
+      .movie-card:hover {
+        transform: translateY(-8px);
+        border-color: #4fc3f7;
+        box-shadow: 0 8px 25px rgba(79, 195, 247, 0.3);
+      }
+      .movie-thumb {
+        width: 100%;
+        height: 350px;
+        object-fit: cover;
+        display: block;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        transition: opacity 0.3s ease;
+      }
+      .movie-thumb[data-loaded="false"] {
+        opacity: 0.3;
+      }
+      .movie-thumb[data-loaded="true"] {
+        opacity: 1;
+      }
+      .movie-card-info {
+        padding: 15px;
+      }
+      .movie-card-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #4fc3f7;
+        margin-bottom: 8px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+      }
+      .movie-card-meta {
+        font-size: 0.85rem;
+        color: #aaa;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .movie-type-badge {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        padding: 5px 12px;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+
+      /* Movie Detail Page */
+      .movie-detail {
+        background: rgba(0, 0, 0, 0.4);
+        border-radius: 16px;
+        padding: 30px;
+        margin-bottom: 20px;
+        backdrop-filter: blur(10px);
+      }
+      .movie-detail-header {
+        display: grid;
+        grid-template-columns: 300px 1fr;
+        gap: 30px;
+        margin-bottom: 30px;
+      }
+      .movie-detail-thumb {
+        width: 100%;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+      }
+      .movie-detail-info h2 {
+        font-size: 2rem;
+        margin-bottom: 10px;
+        color: #4fc3f7;
+      }
+      .movie-detail-info p {
+        margin: 8px 0;
+        line-height: 1.6;
+      }
+      .movie-meta-tags {
+        display: flex;
+        gap: 15px;
+        margin: 15px 0;
+        flex-wrap: wrap;
+      }
+      .meta-tag {
+        background: rgba(79, 195, 247, 0.2);
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 0.9rem;
+        color: #4fc3f7;
+      }
+      .movie-content {
+        background: rgba(0, 0, 0, 0.3);
+        padding: 20px;
+        border-radius: 12px;
+        margin-top: 20px;
+        line-height: 1.8;
+        text-align: justify;
+      }
+      .watch-btn {
+        display: inline-block;
+        padding: 15px 40px;
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: #fff;
+        text-decoration: none;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 1.2rem;
+        margin-top: 20px;
+        cursor: pointer;
+        border: none;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(245, 87, 108, 0.4);
+      }
+      .watch-btn:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(245, 87, 108, 0.6);
+      }
+
+      /* Player Page */
       .player-wrapper {
         background: rgba(0, 0, 0, 0.4);
         border-radius: 16px;
@@ -119,89 +299,111 @@
         font-size: 12px;
         color: #aaa;
       }
-      select {
-        padding: 10px;
-        border-radius: 8px;
-        background: rgba(255, 255, 255, 0.1);
-        color: #e97c7c;
-        border: 2px solid #667eea;
-        font-size: 14px;
-        cursor: pointer;
-        min-width: 250px;
+
+      /* Responsive */
+      @media (max-width: 768px) {
+        .movie-detail-header {
+          grid-template-columns: 1fr;
+        }
+        .movie-grid {
+          grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+          gap: 15px;
+        }
+        .movie-thumb {
+          height: 250px;
+        }
+      }
+
+      /* Page visibility */
+      .page {
+        display: none;
+      }
+      .page.active {
+        display: block;
       }
     </style>
   </head>
   <body>
     <div class="container">
-      <h1>🎬 Video Player Pro</h1>
-
-      <div class="player-wrapper">
-        <div style="margin-bottom: 15px; text-align: center">
-          <select id="movieSelector"></select>
+      <!-- HOME PAGE -->
+      <div id="homePage" class="page active">
+        <div class="header">
+          <h1>🎬 Phim Thuyết Minh Của Minh</h1>
+          <p style="color: #aaa">Chọn phim để xem chi tiết</p>
         </div>
 
-        <div class="episode-info" id="episodeInfo">Đang tải...</div>
+        <div id="loadingHome" class="loading">
+          ⏳ Đang tải danh sách phim...
+        </div>
+        <div id="errorHome" class="error" style="display: none"></div>
+        <div id="movieGrid" class="movie-grid"></div>
+      </div>
 
-        <video id="video" controls></video>
-        <audio id="audio" controls crossorigin="anonymous"></audio>
-
-        <div class="controls">
-          <button id="prevBtn">⏮️ Tập trước</button>
-          <button id="syncBtn">🔄 Đồng bộ Audio</button>
-          <button id="nextBtn">⏭️ Tập sau</button>
+      <!-- DETAIL PAGE -->
+      <div id="detailPage" class="page">
+        <div class="header">
+          <button class="back-btn" onclick="showPage('home')">
+            ⬅️ Quay lại
+          </button>
         </div>
 
-        <div class="status" id="status">Đang tải...</div>
-        <div class="sync-info">
-          <span id="videoTime">Video: 0:00</span>
-          <span id="audioTime">Audio: 0:00</span>
-          <span id="drift">Drift: 0.00s</span>
+        <div id="movieDetail" class="movie-detail"></div>
+      </div>
+
+      <!-- PLAYER PAGE -->
+      <div id="playerPage" class="page">
+        <div class="header">
+          <button class="back-btn" onclick="showPage('detail')">
+            ⬅️ Thông tin phim
+          </button>
         </div>
 
-        <div class="episode-grid" id="episodeGrid"></div>
+        <div class="player-wrapper">
+          <div class="episode-info" id="episodeInfo"></div>
+          <video id="video" controls></video>
+          <audio id="audio" controls crossorigin="anonymous"></audio>
+
+          <div class="controls">
+            <button id="prevBtn">⏮️ Tập trước</button>
+            <button id="syncBtn">🔄 Đồng bộ Audio</button>
+            <button id="nextBtn">⏭️ Tập sau</button>
+          </div>
+
+          <div class="status" id="status"></div>
+          <div class="sync-info">
+            <span id="videoTime">Video: 0:00</span>
+            <span id="audioTime">Audio: 0:00</span>
+            <span id="drift">Drift: 0.00s</span>
+          </div>
+
+          <div class="episode-grid" id="episodeGrid"></div>
+        </div>
       </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script>
-      // ===== CONFIG - SỬ DỤNG GITHUB RAW URL =====
-      // Option 1: GitHub Raw (cập nhật ngay lập tức)
+      const OPHIM_SEARCH = "https://ophim1.com/v1/api/tim-kiem?keyword=";
+      const OPHIM_DETAIL = "https://ophim1.com/v1/api/phim/";
+      const PHIMAPI_TV = "https://phimapi.com/tmdb/tv/";
+      const PHIMAPI_MOVIE = "https://phimapi.com/tmdb/movie/";
+      const AUDIO_BASE = "https://archive.org/download/";
+      const IMG_BASE = "https://img.ophim.live/uploads/movies/";
       const CONFIG_URL =
-        "https://raw.githubusercontent.com/Minh20812/Data-For-Films/main/config_video_sync_audio.json";
+        "https://raw.githubusercontent.com/Minh20812/Data-For-Films/main/config_test_ophim.json";
 
-      // Option 2: jsDelivr CDN (nhanh hơn, cache 12h)
-      // const CONFIG_URL = 'https://cdn.jsdelivr.net/gh/Minh20812/Data-For-Films/main/config_video_sync_audio.json';
-
-      // Fallback config nếu không load được
-      const FALLBACK_CONFIG = {
-        movies: [
-          {
-            name: "Quái vật: Câu Chuyện Của Ed Gein",
-            apiUrl: "https://phimapi.com/tmdb/tv/286801",
-            tmdbId: "286801",
-            skipStart: 30,
-            skipEnd: 62,
-          },
-          {
-            name: "Bí Mật Triệu Đô",
-            apiUrl: "https://phimapi.com/tmdb/tv/285205",
-            tmdbId: "285205",
-            skipStart: 900,
-            skipEnd: 932,
-          },
-        ],
-        currentMovieIndex: 0,
-      };
-
-      let CONFIG = null;
-      let skipStart, skipEnd;
+      let movieConfig = [];
+      let currentMovieData = null;
+      let currentMovieConfig = null;
       let episodes = [];
       let currentEpisode = 0;
       let hls = null;
       let adSkipped = false;
       let userSeeking = false;
       let isSkippingAd = false;
+      let useFallback = false;
 
+      // Elements
       const video = document.getElementById("video");
       const audio = document.getElementById("audio");
       const episodeInfo = document.getElementById("episodeInfo");
@@ -210,163 +412,378 @@
       const nextBtn = document.getElementById("nextBtn");
       const syncBtn = document.getElementById("syncBtn");
       const episodeGrid = document.getElementById("episodeGrid");
-      const movieSelector = document.getElementById("movieSelector");
 
-      // ===== LOAD CONFIG =====
-      async function loadConfig() {
+      // Page navigation
+      function showPage(pageName) {
+        document
+          .querySelectorAll(".page")
+          .forEach((p) => p.classList.remove("active"));
+        document.getElementById(pageName + "Page").classList.add("active");
+      }
+
+      // Load movie config from JSON
+      async function loadMovieConfig() {
         try {
-          status.textContent = "⏳ Đang tải cấu hình từ GitHub...";
+          const response = await fetch(CONFIG_URL);
+          const data = await response.json();
+          movieConfig = data.movies || [];
+          console.log("✅ Loaded config:", movieConfig.length, "movies");
+          return movieConfig;
+        } catch (error) {
+          console.error("Error loading config:", error);
+          throw new Error("Không thể tải cấu hình phim");
+        }
+      }
 
-          const response = await fetch(CONFIG_URL, {
-            cache: "no-cache",
-            headers: {
-              Accept: "application/json",
-            },
+      // Load movie list with parallel loading
+      async function loadMovieList() {
+        try {
+          const loadingEl = document.getElementById("loadingHome");
+          const errorEl = document.getElementById("errorHome");
+
+          loadingEl.style.display = "block";
+          errorEl.style.display = "none";
+
+          await loadMovieConfig();
+
+          // Load all movies in parallel for faster display
+          const loadPromises = movieConfig.map(async (config) => {
+            try {
+              // Try OPhim first
+              const searchResponse = await fetch(OPHIM_SEARCH + config.tmdbId);
+              const searchData = await searchResponse.json();
+
+              if (
+                searchData.status === "success" &&
+                searchData.data.items &&
+                searchData.data.items.length > 0
+              ) {
+                const item = searchData.data.items[0];
+                createMovieCard(item, config, false);
+                return { success: true, source: "ophim" };
+              } else {
+                // Fallback: Load from PhimAPI
+                console.warn(
+                  `⚠️ Movie ${config.tmdbId} not found in OPhim, loading from PhimAPI`
+                );
+                const fallbackUrl = `${PHIMAPI_TV}${config.tmdbId}`;
+
+                try {
+                  const fallbackResponse = await fetch(fallbackUrl);
+                  const fallbackData = await fallbackResponse.json();
+
+                  if (fallbackData.status && fallbackData.movie) {
+                    createMovieCard(
+                      {
+                        name:
+                          fallbackData.movie.name || `TMDB ${config.tmdbId}`,
+                        thumb_url: null,
+                        year: fallbackData.movie.year || "?",
+                        episode_current: `${
+                          fallbackData.episodes?.[0]?.server_data?.length || 0
+                        } tập`,
+                        quality: "HD",
+                        type: fallbackData.movie.type || "series",
+                      },
+                      config,
+                      true
+                    );
+                    return { success: true, source: "phimapi" };
+                  }
+                } catch (fallbackErr) {
+                  console.error(
+                    `PhimAPI fallback failed for ${config.tmdbId}:`,
+                    fallbackErr
+                  );
+                }
+
+                // Ultimate fallback: placeholder
+                createMovieCard(
+                  {
+                    name: `TMDB ${config.tmdbId}`,
+                    thumb_url: null,
+                    year: "?",
+                    episode_current: "? tập",
+                    quality: "HD",
+                    type: "series",
+                  },
+                  config,
+                  true
+                );
+                return { success: false, source: "placeholder" };
+              }
+            } catch (err) {
+              console.error(`Error loading movie ${config.tmdbId}:`, err);
+              createMovieCard(
+                {
+                  name: `TMDB ${config.tmdbId}`,
+                  thumb_url: null,
+                  year: "?",
+                  episode_current: "? tập",
+                  quality: "HD",
+                  type: "series",
+                },
+                config,
+                true
+              );
+              return { success: false, source: "error" };
+            }
           });
 
-          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          // Wait for all movies to load
+          await Promise.all(loadPromises);
 
-          const rawData = await response.json();
-
-          // Chuyển đổi format từ opensubtitles_data.json
-          if (rawData.movies) {
-            // Format chuẩn
-            CONFIG = rawData;
-          } else {
-            // Format từ opensubtitles_data.json (object với key là tên phim)
-            CONFIG = {
-              movies: Object.entries(rawData).map(([name, data]) => ({
-                name: name,
-                apiUrl: data.api_url,
-                tmdbId: data.tmdb_id,
-                skipStart: data.skip_start,
-                skipEnd: data.skip_end,
-              })),
-              currentMovieIndex: 0,
-            };
-            console.log("🔄 Đã chuyển đổi format từ opensubtitles_data.json");
-          }
-
-          console.log("✅ Đã tải", CONFIG.movies.length, "phim từ GitHub");
-          status.textContent = `✅ Đã tải ${CONFIG.movies.length} phim`;
+          loadingEl.style.display = "none";
+          console.log(`✅ Loaded ${movieConfig.length} movies`);
         } catch (error) {
-          console.warn("⚠️ Lỗi tải config:", error.message);
-          console.log("📦 Sử dụng config dự phòng");
-          CONFIG = FALLBACK_CONFIG;
-          status.textContent = "⚠️ Dùng config dự phòng";
+          document.getElementById("loadingHome").style.display = "none";
+          document.getElementById(
+            "errorHome"
+          ).textContent = `❌ ${error.message}`;
+          document.getElementById("errorHome").style.display = "block";
         }
-
-        const movie = CONFIG.movies[CONFIG.currentMovieIndex];
-        skipStart = movie.skipStart;
-        skipEnd = movie.skipEnd;
-
-        initMovieSelector();
-        fetchEpisodes();
       }
 
-      function initMovieSelector() {
-        movieSelector.innerHTML = "";
-        CONFIG.movies.forEach((movie, index) => {
-          const option = document.createElement("option");
-          option.value = index;
-          option.textContent = movie.name;
-          movieSelector.appendChild(option);
-        });
+      // Create movie card with lazy loading
+      function createMovieCard(item, config, isFallback) {
+        const card = document.createElement("div");
+        card.className = "movie-card";
+        card.onclick = () => loadMovieDetail(config, isFallback);
 
-        movieSelector.value = CONFIG.currentMovieIndex;
-        movieSelector.addEventListener("change", (e) => {
-          CONFIG.currentMovieIndex = parseInt(e.target.value);
-          const movie = CONFIG.movies[CONFIG.currentMovieIndex];
-          skipStart = movie.skipStart;
-          skipEnd = movie.skipEnd;
-          fetchEpisodes();
-        });
+        const thumbUrl = isFallback
+          ? "https://via.placeholder.com/250x350/667eea/ffffff?text=Movie"
+          : IMG_BASE + item.thumb_url;
+        const typeLabel = item.type === "series" ? "Phim Bộ" : "Phim Lẻ";
+
+        card.innerHTML = `
+          <div class="movie-type-badge">${typeLabel}${
+          isFallback ? " (PhimAPI)" : ""
+        }</div>
+          <img 
+            src="${thumbUrl}" 
+            alt="${item.name}" 
+            class="movie-thumb" 
+            loading="lazy"
+            data-loaded="false"
+            onerror="this.src='https://via.placeholder.com/250x350/667eea/ffffff?text=No+Image'; this.setAttribute('data-loaded', 'true');"
+            onload="this.setAttribute('data-loaded', 'true');"
+          />
+          <div class="movie-card-info">
+            <div class="movie-card-title">${item.name}</div>
+            <div class="movie-card-meta">
+              <span>📅 ${item.year}</span>
+              <span>🎬 ${item.episode_current}</span>
+              <span>⭐ ${item.quality}</span>
+            </div>
+          </div>
+        `;
+
+        document.getElementById("movieGrid").appendChild(card);
       }
 
-      async function fetchEpisodes() {
+      // Load movie detail
+      async function loadMovieDetail(config, isFallback) {
+        showPage("detail");
+        const detailEl = document.getElementById("movieDetail");
+        detailEl.innerHTML =
+          '<div class="loading">⏳ Đang tải thông tin phim...</div>';
+
+        currentMovieConfig = config;
+        useFallback = isFallback;
+
         try {
-          const currentMovie = CONFIG.movies[CONFIG.currentMovieIndex];
-          status.textContent = "🔄 Đang tải dữ liệu từ API...";
+          if (isFallback) {
+            // Use PhimAPI fallback
+            const apiUrl = `${PHIMAPI_TV}${config.tmdbId}`;
+            const response = await fetch(apiUrl);
+            const data = await response.json();
 
-          const response = await fetch(currentMovie.apiUrl);
-          if (!response.ok)
-            throw new Error(`HTTP error! status: ${response.status}`);
+            if (!data.status || !data.movie) {
+              throw new Error("Không thể tải thông tin phim từ PhimAPI");
+            }
 
-          const data = await response.json();
-
-          if (!data.status || !data.episodes || data.episodes.length === 0) {
-            throw new Error("Không tìm thấy dữ liệu tập phim");
-          }
-
-          const tmdbId = data.movie?.tmdb?.id || currentMovie.tmdbId;
-          const season = data.movie?.tmdb?.season || 1;
-          const serverData = data.episodes[0].server_data;
-          const isMovie = currentMovie.apiUrl.includes("/movie/");
-
-          if (isMovie) {
-            episodes = [
-              {
-                name: serverData[0].name,
-                video: serverData[0].link_m3u8,
-                audio: `https://archive.org/download/movie_tmdb_${tmdbId}/movie_tmdb_${tmdbId}.ogg`,
-              },
-            ];
+            currentMovieData = {
+              name: data.movie.name || `TMDB ${config.tmdbId}`,
+              origin_name: data.movie.origin_name || data.movie.name,
+              content: data.movie.content || "Không có mô tả",
+              type: data.movie.type || "series",
+              year: data.movie.year || "?",
+              episode_current: `${
+                data.episodes?.[0]?.server_data?.length || 0
+              } tập`,
+              quality: "HD",
+              lang: "Vietsub",
+              thumb_url: null,
+              tmdb: { id: config.tmdbId },
+              episodes: data.episodes || [],
+              category: [],
+              country: [],
+            };
           } else {
-            episodes = serverData.map((ep, index) => {
-              const episodeNum = index + 1;
-              return {
-                name: ep.name,
-                video: ep.link_m3u8,
-                audio: `https://archive.org/download/s${season}_e${episodeNum}_tv_tmdb_${tmdbId}/s${season}_e${episodeNum}_tv_tmdb_${tmdbId}.ogg`,
-              };
-            });
+            // Use OPhim
+            const searchResponse = await fetch(OPHIM_SEARCH + config.tmdbId);
+            const searchData = await searchResponse.json();
+
+            if (
+              searchData.status !== "success" ||
+              !searchData.data.items ||
+              searchData.data.items.length === 0
+            ) {
+              throw new Error("Không tìm thấy phim");
+            }
+
+            const slug = searchData.data.items[0].slug;
+            const detailResponse = await fetch(OPHIM_DETAIL + slug);
+            const detailData = await detailResponse.json();
+
+            if (detailData.status !== "success" || !detailData.data.item) {
+              throw new Error("Không thể tải thông tin phim");
+            }
+
+            currentMovieData = detailData.data.item;
           }
 
-          console.log(
-            "✅ Đã tải",
-            episodes.length,
-            isMovie ? "phim" : "tập phim"
-          );
-          createEpisodeButtons();
-          loadEpisode(0);
+          displayMovieDetail();
         } catch (error) {
-          console.error("❌ Lỗi khi tải dữ liệu:", error);
-          status.textContent = `❌ Lỗi: ${error.message}`;
-          status.style.color = "#ff6b6b";
+          detailEl.innerHTML = `<div class="error">❌ ${error.message}</div>`;
         }
       }
 
-      function createEpisodeButtons() {
+      // Display movie detail
+      function displayMovieDetail() {
+        const movie = currentMovieData;
+        const thumbUrl = movie.thumb_url
+          ? IMG_BASE + movie.thumb_url
+          : "https://via.placeholder.com/300x450/667eea/ffffff?text=No+Image";
+        const typeLabel = movie.type === "series" ? "Phim Bộ" : "Phim Lẻ";
+
+        const detailHTML = `
+          <div class="movie-detail-header">
+            <img src="${thumbUrl}" alt="${
+          movie.name
+        }" class="movie-detail-thumb" onerror="this.src='https://via.placeholder.com/300x450/667eea/ffffff?text=No+Image'" />
+            <div class="movie-detail-info">
+              <h2>${movie.name}</h2>
+              <p style="color: #aaa; font-style: italic; font-size: 1.1rem;">${
+                movie.origin_name
+              }</p>
+              
+              <div class="movie-meta-tags">
+                <span class="meta-tag">📅 ${movie.year}</span>
+                <span class="meta-tag">🎭 ${typeLabel}</span>
+                <span class="meta-tag">📺 ${movie.episode_current}</span>
+                <span class="meta-tag">⭐ ${movie.quality}</span>
+                <span class="meta-tag">🗣️ ${movie.lang}</span>
+                ${
+                  useFallback
+                    ? '<span class="meta-tag" style="background: rgba(255, 107, 107, 0.3);">📡 PhimAPI</span>'
+                    : ""
+                }
+              </div>
+
+              ${
+                movie.category && movie.category.length > 0
+                  ? `
+                <p><strong>Thể loại:</strong> ${movie.category
+                  .map((c) => c.name)
+                  .join(", ")}</p>
+              `
+                  : ""
+              }
+
+              ${
+                movie.country && movie.country.length > 0
+                  ? `
+                <p><strong>Quốc gia:</strong> ${movie.country
+                  .map((c) => c.name)
+                  .join(", ")}</p>
+              `
+                  : ""
+              }
+
+              <button class="watch-btn" onclick="startWatching()">▶️ Xem Phim Ngay</button>
+            </div>
+          </div>
+
+          <div class="movie-content">
+            <h3 style="color: #4fc3f7; margin-bottom: 15px;">📖 Nội dung phim</h3>
+            <p>${movie.content}</p>
+          </div>
+        `;
+
+        document.getElementById("movieDetail").innerHTML = detailHTML;
+      }
+
+      // Start watching
+      function startWatching() {
+        prepareEpisodes();
+        showPage("player");
+        loadEpisode(0);
+      }
+
+      // Prepare episodes
+      function prepareEpisodes() {
+        episodes = [];
+        const tmdbId = currentMovieData.tmdb.id;
+        const movieType = currentMovieData.type;
+        const isSeries = movieType === "series";
+        const season = currentMovieData.tmdb?.season || 1;
+
+        if (currentMovieData.episodes && currentMovieData.episodes.length > 0) {
+          const serverData = currentMovieData.episodes[0].server_data;
+
+          serverData.forEach((ep, index) => {
+            let audioUrl;
+
+            if (isSeries) {
+              audioUrl = `${AUDIO_BASE}s${season}_e${
+                index + 1
+              }_tv_tmdb_${tmdbId}/s${season}_e${
+                index + 1
+              }_tv_tmdb_${tmdbId}.ogg`;
+            } else {
+              audioUrl = `${AUDIO_BASE}movie_tmdb_${tmdbId}/movie_tmdb_${tmdbId}.ogg`;
+            }
+
+            episodes.push({
+              name: isSeries ? `Tập ${ep.name}` : currentMovieData.name,
+              filename: ep.filename || ep.name,
+              video: ep.link_m3u8,
+              audio: audioUrl,
+            });
+          });
+        }
+
         episodeGrid.innerHTML = "";
-        episodes.forEach((ep, idx) => {
-          const btn = document.createElement("button");
-          btn.className = "episode-btn";
-          btn.textContent = ep.name;
-          btn.onclick = () => loadEpisode(idx);
-          episodeGrid.appendChild(btn);
-        });
+        if (isSeries && episodes.length > 1) {
+          episodes.forEach((ep, idx) => {
+            const btn = document.createElement("button");
+            btn.className = "episode-btn";
+            btn.textContent = ep.name;
+            btn.onclick = () => loadEpisode(idx);
+            episodeGrid.appendChild(btn);
+          });
+          episodeGrid.style.display = "grid";
+        } else {
+          episodeGrid.style.display = "none";
+        }
       }
 
-      function updateEpisodeButtons() {
-        const buttons = episodeGrid.querySelectorAll(".episode-btn");
-        buttons.forEach((btn, idx) => {
-          btn.classList.toggle("active", idx === currentEpisode);
-        });
-        prevBtn.disabled = currentEpisode === 0;
-        nextBtn.disabled = currentEpisode === episodes.length - 1;
-      }
-
+      // Load episode
       function loadEpisode(index) {
         if (index < 0 || index >= episodes.length) return;
 
         currentEpisode = index;
         const ep = episodes[index];
 
-        episodeInfo.textContent = ep.name;
+        episodeInfo.textContent = `${ep.name}: ${ep.filename}`;
         status.textContent = `Đang tải ${ep.name}...`;
+
         adSkipped = false;
 
-        if (hls) hls.destroy();
+        if (hls) {
+          hls.destroy();
+        }
 
         if (Hls.isSupported()) {
           hls = new Hls();
@@ -383,6 +800,15 @@
         updateEpisodeButtons();
       }
 
+      function updateEpisodeButtons() {
+        const buttons = episodeGrid.querySelectorAll(".episode-btn");
+        buttons.forEach((btn, idx) => {
+          btn.classList.toggle("active", idx === currentEpisode);
+        });
+        prevBtn.disabled = currentEpisode === 0;
+        nextBtn.disabled = currentEpisode === episodes.length - 1;
+      }
+
       prevBtn.onclick = () => loadEpisode(currentEpisode - 1);
       nextBtn.onclick = () => loadEpisode(currentEpisode + 1);
 
@@ -390,23 +816,25 @@
       video.addEventListener("pause", () => audio.pause());
 
       video.addEventListener("seeking", () => {
-        if (!isSkippingAd) userSeeking = true;
+        if (!isSkippingAd) {
+          userSeeking = true;
+        }
       });
 
       video.addEventListener("seeked", () => {
         if (userSeeking) {
-          const t = video.currentTime;
-          const adDuration = skipEnd - skipStart;
+          const videoTime = video.currentTime;
 
-          if (t >= skipEnd) {
-            audio.currentTime = t - adDuration;
-            console.log(
-              `🎯 Sync: Video ${t.toFixed(2)}s → Audio ${(
-                t - adDuration
-              ).toFixed(2)}s`
-            );
+          if (useFallback) {
+            // PhimAPI: có ads, cần tính toán skipStart/skipEnd
+            const skipStart = currentMovieConfig?.skipStart || 0;
+            const skipEnd = currentMovieConfig?.skipEnd || 0;
+            const adDuration = skipEnd - skipStart;
+            audio.currentTime =
+              videoTime >= skipEnd ? videoTime - adDuration : videoTime;
           } else {
-            audio.currentTime = t;
+            // OPhim: không có ads, sync trực tiếp
+            audio.currentTime = videoTime;
           }
         }
         userSeeking = false;
@@ -415,26 +843,58 @@
 
       video.addEventListener("timeupdate", () => {
         const t = video.currentTime;
-        if (!adSkipped && t >= skipStart && t < skipEnd) {
-          console.log("⏩ Skipping ads...");
-          isSkippingAd = true;
-          adSkipped = true;
-          video.currentTime = skipEnd;
+
+        // Chỉ skip ads khi dùng PhimAPI fallback
+        if (useFallback) {
+          const skipStart = currentMovieConfig?.skipStart || 0;
+          const skipEnd = currentMovieConfig?.skipEnd || 0;
+
+          if (
+            !adSkipped &&
+            skipStart > 0 &&
+            skipEnd > 0 &&
+            t >= skipStart &&
+            t < skipEnd
+          ) {
+            console.log(
+              `⏩ Skipping ads from ${skipStart}s to ${skipEnd}s (PhimAPI source)`
+            );
+            isSkippingAd = true;
+            adSkipped = true;
+            video.currentTime = skipEnd;
+          }
         }
       });
 
       syncBtn.onclick = () => {
-        const t = video.currentTime;
-        const adDuration = skipEnd - skipStart;
+        const videoTime = video.currentTime;
 
-        if (t >= skipEnd) {
-          audio.currentTime = t - adDuration;
-          status.textContent = `✅ Đồng bộ: Video ${formatTime(
-            t
-          )} → Audio ${formatTime(t - adDuration)}`;
+        if (useFallback) {
+          // PhimAPI: có ads, cần tính toán skipStart/skipEnd
+          const skipStart = currentMovieConfig?.skipStart || 0;
+          const skipEnd = currentMovieConfig?.skipEnd || 0;
+          const adDuration = skipEnd - skipStart;
+
+          audio.currentTime =
+            videoTime >= skipEnd ? videoTime - adDuration : videoTime;
+
+          if (adDuration > 0) {
+            status.textContent = `✅ Đồng bộ: Video ${formatTime(
+              videoTime
+            )} → Audio ${formatTime(
+              audio.currentTime
+            )} (PhimAPI - trừ ${adDuration}s ads)`;
+          } else {
+            status.textContent = `✅ Đã đồng bộ tại ${formatTime(
+              videoTime
+            )} (PhimAPI)`;
+          }
         } else {
-          audio.currentTime = t;
-          status.textContent = `✅ Đã đồng bộ tại ${formatTime(t)}`;
+          // OPhim: không có ads, sync trực tiếp 1:1
+          audio.currentTime = videoTime;
+          status.textContent = `✅ Đã đồng bộ tại ${formatTime(
+            videoTime
+          )} (OPhim)`;
         }
 
         setTimeout(() => {
@@ -473,8 +933,10 @@
         }
       }, 1000);
 
-      // ===== START APP =====
-      loadConfig();
+      // Initialize
+      window.addEventListener("DOMContentLoaded", () => {
+        loadMovieList();
+      });
     </script>
   </body>
 </html>
