@@ -466,7 +466,10 @@
                 console.warn(
                   `⚠️ Movie ${config.tmdbId} not found in OPhim, loading from PhimAPI`
                 );
-                const fallbackUrl = `${PHIMAPI_TV}${config.tmdbId}`;
+                const fallbackUrl =
+                  config.type === "movie"
+                    ? `${PHIMAPI_MOVIE}${config.tmdbId}`
+                    : `${PHIMAPI_TV}${config.tmdbId}`;
 
                 try {
                   const fallbackResponse = await fetch(fallbackUrl);
@@ -553,7 +556,11 @@
         const thumbUrl = isFallback
           ? "https://via.placeholder.com/250x350/667eea/ffffff?text=Movie"
           : IMG_BASE + item.thumb_url;
-        const typeLabel = item.type === "series" ? "Phim Bộ" : "Phim Lẻ";
+        // Use type from config (tv/movie) instead of API response
+        const typeLabel =
+          config.type === "tv" || item.type === "series"
+            ? "Phim Bộ"
+            : "Phim Lẻ";
 
         card.innerHTML = `
           <div class="movie-type-badge">${typeLabel}${
@@ -594,7 +601,10 @@
         try {
           if (isFallback) {
             // Use PhimAPI fallback
-            const apiUrl = `${PHIMAPI_TV}${config.tmdbId}`;
+            const apiUrl =
+              config.type === "movie"
+                ? `${PHIMAPI_MOVIE}${config.tmdbId}`
+                : `${PHIMAPI_TV}${config.tmdbId}`;
             const response = await fetch(apiUrl);
             const data = await response.json();
 
@@ -606,7 +616,7 @@
               name: data.movie.name || `TMDB ${config.tmdbId}`,
               origin_name: data.movie.origin_name || data.movie.name,
               content: data.movie.content || "Không có mô tả",
-              type: data.movie.type || "series",
+              type: config.type === "tv" ? "series" : "single",
               year: data.movie.year || "?",
               episode_current: `${
                 data.episodes?.[0]?.server_data?.length || 0
@@ -614,7 +624,7 @@
               quality: "HD",
               lang: "Vietsub",
               thumb_url: null,
-              tmdb: { id: config.tmdbId },
+              tmdb: { id: config.tmdbId, season: 1 },
               episodes: data.episodes || [],
               category: [],
               country: [],
@@ -726,7 +736,8 @@
         episodes = [];
         const tmdbId = currentMovieData.tmdb.id;
         const movieType = currentMovieData.type;
-        const isSeries = movieType === "series";
+        const isSeries =
+          movieType === "series" || currentMovieConfig.type === "tv";
         const season = currentMovieData.tmdb?.season || 1;
 
         if (currentMovieData.episodes && currentMovieData.episodes.length > 0) {
