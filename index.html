@@ -299,6 +299,28 @@
         font-size: 12px;
         color: #aaa;
       }
+      /* Thêm vào phần style */
+      .server-selector {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        margin-bottom: 20px;
+      }
+      .server-btn {
+        padding: 12px 24px;
+        background: rgba(255, 255, 255, 0.1);
+        border: 2px solid transparent;
+        transition: all 0.3s ease;
+      }
+      .server-btn:hover {
+        background: rgba(255, 255, 255, 0.2);
+        border-color: #4fc3f7;
+      }
+      .server-btn.active {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-color: #667eea;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+      }
 
       /* Responsive */
       @media (max-width: 768px) {
@@ -360,6 +382,12 @@
 
         <div class="player-wrapper">
           <div class="episode-info" id="episodeInfo"></div>
+          <div class="server-selector" id="serverSelector">
+            <button class="server-btn active" data-server="ophim">
+              🎬 OPhim
+            </button>
+            <button class="server-btn" data-server="phimapi">📡 PhimAPI</button>
+          </div>
           <video id="video" controls></video>
           <audio id="audio" controls crossorigin="anonymous"></audio>
 
@@ -402,6 +430,8 @@
       let userSeeking = false;
       let isSkippingAd = false;
       let useFallback = false;
+      let phimApiData = null;
+      let currentServer = "ophim";
 
       // Elements
       const video = document.getElementById("video");
@@ -446,96 +476,17 @@
 
           await loadMovieConfig();
 
-          // Load all movies in parallel for faster display
           const loadPromises = movieConfig.map(async (config) => {
             try {
-              // Try OPhim first
-              const searchResponse = await fetch(OPHIM_SEARCH + config.tmdbId);
-              const searchData = await searchResponse.json();
-
-              if (
-                searchData.status === "success" &&
-                searchData.data.items &&
-                searchData.data.items.length > 0
-              ) {
-                const item = searchData.data.items[0];
-                createMovieCard(item, config, false);
-                return { success: true, source: "ophim" };
-              } else {
-                // Fallback: Load from PhimAPI
-                console.warn(
-                  `⚠️ Movie ${config.tmdbId} not found in OPhim, loading from PhimAPI`
-                );
-                const fallbackUrl =
-                  config.type === "movie"
-                    ? `${PHIMAPI_MOVIE}${config.tmdbId}`
-                    : `${PHIMAPI_TV}${config.tmdbId}`;
-
-                try {
-                  const fallbackResponse = await fetch(fallbackUrl);
-                  const fallbackData = await fallbackResponse.json();
-
-                  if (fallbackData.status && fallbackData.movie) {
-                    createMovieCard(
-                      {
-                        name:
-                          fallbackData.movie.name || `TMDB ${config.tmdbId}`,
-                        thumb_url: null,
-                        year: fallbackData.movie.year || "?",
-                        episode_current: `${
-                          fallbackData.episodes?.[0]?.server_data?.length || 0
-                        } tập`,
-                        quality: "HD",
-                        type: fallbackData.movie.type || "series",
-                      },
-                      config,
-                      true
-                    );
-                    return { success: true, source: "phimapi" };
-                  }
-                } catch (fallbackErr) {
-                  console.error(
-                    `PhimAPI fallback failed for ${config.tmdbId}:`,
-                    fallbackErr
-                  );
-                }
-
-                // Ultimate fallback: placeholder
-                createMovieCard(
-                  {
-                    name: `TMDB ${config.tmdbId}`,
-                    thumb_url: null,
-                    year: "?",
-                    episode_current: "? tập",
-                    quality: "HD",
-                    type: "series",
-                  },
-                  config,
-                  true
-                );
-                return { success: false, source: "placeholder" };
-              }
+              createMovieCard(config); // Chỉ truyền config, không cần item và isFallback
+              return { success: true, source: "config" };
             } catch (err) {
               console.error(`Error loading movie ${config.tmdbId}:`, err);
-              createMovieCard(
-                {
-                  name: `TMDB ${config.tmdbId}`,
-                  thumb_url: null,
-                  year: "?",
-                  episode_current: "? tập",
-                  quality: "HD",
-                  type: "series",
-                },
-                config,
-                true
-              );
               return { success: false, source: "error" };
             }
           });
 
-          // Wait for all movies to load
           await Promise.all(loadPromises);
-
           loadingEl.style.display = "none";
           console.log(`✅ Loaded ${movieConfig.length} movies`);
         } catch (error) {
@@ -548,109 +499,72 @@
       }
 
       // Create movie card with lazy loading
-      function createMovieCard(item, config, isFallback) {
+      function createMovieCard(config) {
         const card = document.createElement("div");
         card.className = "movie-card";
-        card.onclick = () => loadMovieDetail(config, isFallback);
+        card.onclick = () => loadMovieDetail(config);
 
-        const thumbUrl = isFallback
-          ? "https://via.placeholder.com/250x350/667eea/ffffff?text=Movie"
-          : IMG_BASE + item.thumb_url;
-        // Use type from config (tv/movie) instead of API response
-        const typeLabel =
-          config.type === "tv" || item.type === "series"
-            ? "Phim Bộ"
-            : "Phim Lẻ";
+        const thumbUrl =
+          config.posterPath ||
+          "https://via.placeholder.com/250x350/667eea/ffffff?text=No+Image";
+
+        const typeLabel = config.type === "tv" ? "Phim Bộ" : "Phim Lẻ";
 
         card.innerHTML = `
-          <div class="movie-type-badge">${typeLabel}${
-          isFallback ? " (PhimAPI)" : ""
-        }</div>
-          <img 
-            src="${thumbUrl}" 
-            alt="${item.name}" 
-            class="movie-thumb" 
-            loading="lazy"
-            data-loaded="false"
-            onerror="this.src='https://via.placeholder.com/250x350/667eea/ffffff?text=No+Image'; this.setAttribute('data-loaded', 'true');"
-            onload="this.setAttribute('data-loaded', 'true');"
-          />
-          <div class="movie-card-info">
-            <div class="movie-card-title">${item.name}</div>
-            <div class="movie-card-meta">
-              <span>📅 ${item.year}</span>
-              <span>🎬 ${item.episode_current}</span>
-              <span>⭐ ${item.quality}</span>
-            </div>
-          </div>
-        `;
+    <div class="movie-type-badge">${typeLabel}</div>
+    <img 
+      src="${thumbUrl}" 
+      alt="${config.nameVi}" 
+      class="movie-thumb" 
+      loading="lazy"
+      data-loaded="false"
+      onerror="this.src='https://via.placeholder.com/250x350/667eea/ffffff?text=No+Image'; this.setAttribute('data-loaded', 'true');"
+      onload="this.setAttribute('data-loaded', 'true');"
+    />
+    <div class="movie-card-info">
+      <div class="movie-card-title">${config.nameVi}</div>
+      <div class="movie-card-meta">
+        <span>🎬 ${config.nameEn}</span>
+      </div>
+    </div>
+  `;
 
         document.getElementById("movieGrid").appendChild(card);
       }
 
-      // Load movie detail
-      async function loadMovieDetail(config, isFallback) {
+      async function loadMovieDetail(config) {
         showPage("detail");
         const detailEl = document.getElementById("movieDetail");
         detailEl.innerHTML =
           '<div class="loading">⏳ Đang tải thông tin phim...</div>';
 
         currentMovieConfig = config;
-        useFallback = isFallback;
+        useFallback = false; // Mặc định dùng OPhim
 
         try {
-          if (isFallback) {
-            // Use PhimAPI fallback
-            const apiUrl =
-              config.type === "movie"
-                ? `${PHIMAPI_MOVIE}${config.tmdbId}`
-                : `${PHIMAPI_TV}${config.tmdbId}`;
-            const response = await fetch(apiUrl);
-            const data = await response.json();
+          // Load từ OPhim và PhimAPI song song
+          const [ophimData, phimApiDataResult] = await Promise.allSettled([
+            loadFromOphim(config),
+            loadFromPhimApi(config),
+          ]);
 
-            if (!data.status || !data.movie) {
-              throw new Error("Không thể tải thông tin phim từ PhimAPI");
-            }
-
-            currentMovieData = {
-              name: data.movie.name || `TMDB ${config.tmdbId}`,
-              origin_name: data.movie.origin_name || data.movie.name,
-              content: data.movie.content || "Không có mô tả",
-              type: config.type === "tv" ? "series" : "single",
-              year: data.movie.year || "?",
-              episode_current: `${
-                data.episodes?.[0]?.server_data?.length || 0
-              } tập`,
-              quality: "HD",
-              lang: "Vietsub",
-              thumb_url: null,
-              tmdb: { id: config.tmdbId, season: 1 },
-              episodes: data.episodes || [],
-              category: [],
-              country: [],
-            };
+          // Ưu tiên OPhim
+          if (ophimData.status === "fulfilled" && ophimData.value) {
+            currentMovieData = ophimData.value;
+            useFallback = false;
+          } else if (
+            phimApiDataResult.status === "fulfilled" &&
+            phimApiDataResult.value
+          ) {
+            currentMovieData = phimApiDataResult.value;
+            useFallback = true;
           } else {
-            // Use OPhim
-            const searchResponse = await fetch(OPHIM_SEARCH + config.tmdbId);
-            const searchData = await searchResponse.json();
+            throw new Error("Không thể tải thông tin phim từ cả 2 nguồn");
+          }
 
-            if (
-              searchData.status !== "success" ||
-              !searchData.data.items ||
-              searchData.data.items.length === 0
-            ) {
-              throw new Error("Không tìm thấy phim");
-            }
-
-            const slug = searchData.data.items[0].slug;
-            const detailResponse = await fetch(OPHIM_DETAIL + slug);
-            const detailData = await detailResponse.json();
-
-            if (detailData.status !== "success" || !detailData.data.item) {
-              throw new Error("Không thể tải thông tin phim");
-            }
-
-            currentMovieData = detailData.data.item;
+          // Lưu PhimAPI data nếu có
+          if (phimApiDataResult.status === "fulfilled") {
+            phimApiData = phimApiDataResult.value;
           }
 
           displayMovieDetail();
@@ -659,67 +573,146 @@
         }
       }
 
+      async function loadFromOphim(config) {
+        try {
+          const searchResponse = await fetch(OPHIM_SEARCH + config.tmdbId);
+          const searchData = await searchResponse.json();
+
+          if (
+            searchData.status !== "success" ||
+            !searchData.data.items ||
+            searchData.data.items.length === 0
+          ) {
+            return null;
+          }
+
+          const slug = searchData.data.items[0].slug;
+          const detailResponse = await fetch(OPHIM_DETAIL + slug);
+          const detailData = await detailResponse.json();
+
+          if (detailData.status !== "success" || !detailData.data.item) {
+            return null;
+          }
+
+          return detailData.data.item;
+        } catch (error) {
+          console.error("OPhim load error:", error);
+          return null;
+        }
+      }
+
+      async function loadFromPhimApi(config) {
+        try {
+          const apiUrl =
+            config.type === "movie"
+              ? `${PHIMAPI_MOVIE}${config.tmdbId}`
+              : `${PHIMAPI_TV}${config.tmdbId}`;
+          const response = await fetch(apiUrl);
+          const data = await response.json();
+
+          if (!data.status || !data.movie) {
+            return null;
+          }
+
+          return {
+            name: data.movie.name || `TMDB ${config.tmdbId}`,
+            origin_name: data.movie.origin_name || data.movie.name,
+            content: data.movie.content || "Không có mô tả",
+            type: config.type === "tv" ? "series" : "single",
+            year: data.movie.year || "?",
+            episode_current:
+              data.movie.episode_current ||
+              `${data.episodes?.[0]?.server_data?.length || 0} tập`,
+            quality: data.movie.quality || "HD",
+            lang: data.movie.lang || "Vietsub",
+            thumb_url: data.movie.thumb_url, // Giữ nguyên full URL từ PhimAPI
+            poster_url: data.movie.poster_url, // Giữ nguyên full URL từ PhimAPI
+            tmdb: { id: config.tmdbId, season: 1 },
+            episodes: data.episodes || [],
+            category: data.movie.category || [],
+            country: data.movie.country || [],
+          };
+        } catch (error) {
+          console.error("PhimAPI load error:", error);
+          return null;
+        }
+      }
+
       // Display movie detail
       function displayMovieDetail() {
         const movie = currentMovieData;
-        const thumbUrl = movie.thumb_url
-          ? IMG_BASE + movie.thumb_url
-          : "https://via.placeholder.com/300x450/667eea/ffffff?text=No+Image";
-        const typeLabel = movie.type === "series" ? "Phim Bộ" : "Phim Lẻ";
+        const config = currentMovieConfig;
+
+        // Ưu tiên posterPath từ config, fallback về movie data
+        let thumbUrl = config.posterPath;
+
+        if (!thumbUrl) {
+          if (movie.poster_url) {
+            thumbUrl = movie.poster_url;
+          } else if (movie.thumb_url) {
+            thumbUrl = movie.thumb_url.startsWith("http")
+              ? movie.thumb_url
+              : IMG_BASE + movie.thumb_url;
+          } else {
+            thumbUrl =
+              "https://via.placeholder.com/300x450/667eea/ffffff?text=No+Image";
+          }
+        }
+
+        const typeLabel = config.type === "tv" ? "Phim Bộ" : "Phim Lẻ";
 
         const detailHTML = `
-          <div class="movie-detail-header">
-            <img src="${thumbUrl}" alt="${
-          movie.name
-        }" class="movie-detail-thumb" onerror="this.src='https://via.placeholder.com/300x450/667eea/ffffff?text=No+Image'" />
-            <div class="movie-detail-info">
-              <h2>${movie.name}</h2>
-              <p style="color: #aaa; font-style: italic; font-size: 1.1rem;">${
-                movie.origin_name
-              }</p>
-              
-              <div class="movie-meta-tags">
-                <span class="meta-tag">📅 ${movie.year}</span>
-                <span class="meta-tag">🎭 ${typeLabel}</span>
-                <span class="meta-tag">📺 ${movie.episode_current}</span>
-                <span class="meta-tag">⭐ ${movie.quality}</span>
-                <span class="meta-tag">🗣️ ${movie.lang}</span>
-                ${
-                  useFallback
-                    ? '<span class="meta-tag" style="background: rgba(255, 107, 107, 0.3);">📡 PhimAPI</span>'
-                    : ""
-                }
-              </div>
+    <div class="movie-detail-header">
+      <img src="${thumbUrl}" alt="${config.nameVi}" class="movie-detail-thumb" 
+        onerror="this.src='https://via.placeholder.com/300x450/667eea/ffffff?text=No+Image'" />
+      <div class="movie-detail-info">
+        <h2>${config.nameVi}</h2>
+        <p style="color: #aaa; font-style: italic; font-size: 1.1rem;">${
+          config.nameEn
+        }</p>
+        
+        <div class="movie-meta-tags">
+          <span class="meta-tag">📅 ${movie.year || "?"}</span>
+          <span class="meta-tag">🎭 ${typeLabel}</span>
+          <span class="meta-tag">📺 ${movie.episode_current || "?"}</span>
+          <span class="meta-tag">⭐ ${movie.quality || "HD"}</span>
+          <span class="meta-tag">🗣️ ${movie.lang || "Vietsub"}</span>
+          ${
+            phimApiData
+              ? '<span class="meta-tag" style="background: rgba(76, 175, 80, 0.3);">✅ 2 Server</span>'
+              : '<span class="meta-tag">🎬 OPhim</span>'
+          }
+        </div>
 
-              ${
-                movie.category && movie.category.length > 0
-                  ? `
-                <p><strong>Thể loại:</strong> ${movie.category
-                  .map((c) => c.name)
-                  .join(", ")}</p>
-              `
-                  : ""
-              }
+        ${
+          movie.category && movie.category.length > 0
+            ? `
+          <p><strong>Thể loại:</strong> ${movie.category
+            .map((c) => c.name)
+            .join(", ")}</p>
+        `
+            : ""
+        }
 
-              ${
-                movie.country && movie.country.length > 0
-                  ? `
-                <p><strong>Quốc gia:</strong> ${movie.country
-                  .map((c) => c.name)
-                  .join(", ")}</p>
-              `
-                  : ""
-              }
+        ${
+          movie.country && movie.country.length > 0
+            ? `
+          <p><strong>Quốc gia:</strong> ${movie.country
+            .map((c) => c.name)
+            .join(", ")}</p>
+        `
+            : ""
+        }
 
-              <button class="watch-btn" onclick="startWatching()">▶️ Xem Phim Ngay</button>
-            </div>
-          </div>
+        <button class="watch-btn" onclick="startWatching()">▶️ Xem Phim Ngay</button>
+      </div>
+    </div>
 
-          <div class="movie-content">
-            <h3 style="color: #4fc3f7; margin-bottom: 15px;">📖 Nội dung phim</h3>
-            <p>${movie.content}</p>
-          </div>
-        `;
+    <div class="movie-content">
+      <h3 style="color: #4fc3f7; margin-bottom: 15px;">📖 Nội dung phim</h3>
+      <p>${movie.content}</p>
+    </div>
+  `;
 
         document.getElementById("movieDetail").innerHTML = detailHTML;
       }
@@ -727,6 +720,7 @@
       // Start watching
       function startWatching() {
         prepareEpisodes();
+        setupServerSelector();
         showPage("player");
         loadEpisode(0);
       }
@@ -756,6 +750,7 @@
               audioUrl = `${AUDIO_BASE}movie_tmdb_${tmdbId}/movie_tmdb_${tmdbId}.ogg`;
             }
 
+            // Chỉ lấy tên tập, không lấy filename
             episodes.push({
               name: isSeries ? `Tập ${ep.name}` : currentMovieData.name,
               filename: ep.filename || ep.name,
@@ -770,7 +765,7 @@
           episodes.forEach((ep, idx) => {
             const btn = document.createElement("button");
             btn.className = "episode-btn";
-            btn.textContent = ep.name;
+            btn.textContent = ep.name; // Chỉ hiển thị "Tập X"
             btn.onclick = () => loadEpisode(idx);
             episodeGrid.appendChild(btn);
           });
@@ -780,6 +775,65 @@
         }
       }
 
+      // Thêm sau hàm prepareEpisodes()
+      function setupServerSelector() {
+        const serverSelector = document.getElementById("serverSelector");
+
+        // Ẩn selector nếu chỉ có 1 server
+        if (
+          !phimApiData ||
+          !currentMovieData.episodes ||
+          currentMovieData.episodes.length === 0
+        ) {
+          serverSelector.style.display = "none";
+          return;
+        }
+
+        serverSelector.style.display = "flex";
+
+        const buttons = serverSelector.querySelectorAll(".server-btn");
+        buttons.forEach((btn) => {
+          btn.onclick = () => {
+            const server = btn.getAttribute("data-server");
+            switchServer(server);
+
+            buttons.forEach((b) => b.classList.remove("active"));
+            btn.classList.add("active");
+          };
+        });
+      }
+
+      function switchServer(server) {
+        if (server === currentServer) return;
+
+        currentServer = server;
+        const currentTime = video.currentTime;
+
+        if (server === "phimapi" && phimApiData) {
+          // Chuyển sang PhimAPI
+          currentMovieData = phimApiData;
+          useFallback = true;
+        } else {
+          // Chuyển về OPhim (cần load lại nếu chưa có)
+          useFallback = false;
+        }
+
+        prepareEpisodes();
+        loadEpisode(currentEpisode);
+
+        // Giữ lại thời gian xem
+        setTimeout(() => {
+          video.currentTime = currentTime;
+          if (!video.paused) {
+            video.play();
+          }
+        }, 500);
+
+        status.textContent = `🔄 Đã chuyển sang ${
+          server === "ophim" ? "OPhim" : "PhimAPI"
+        }`;
+      }
+
       // Load episode
       function loadEpisode(index) {
         if (index < 0 || index >= episodes.length) return;
@@ -787,7 +841,8 @@
         currentEpisode = index;
         const ep = episodes[index];
 
-        episodeInfo.textContent = `${ep.name}: ${ep.filename}`;
+        // Chỉ hiển thị tên tập (Tập X), không hiển thị filename
+        episodeInfo.textContent = ep.name;
         status.textContent = `Đang tải ${ep.name}...`;
 
         adSkipped = false;
