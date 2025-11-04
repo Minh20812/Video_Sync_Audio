@@ -51,6 +51,60 @@
         box-shadow: 0 4px 12px rgba(102, 126, 234, 0.5);
       }
 
+      /* Filter */
+      .filter-bar {
+        display: flex;
+        gap: 15px;
+        justify-content: center;
+        margin-bottom: 30px;
+        flex-wrap: wrap;
+      }
+      .filter-btn {
+        padding: 12px 30px;
+        background: rgba(255, 255, 255, 0.1);
+        border: 2px solid transparent;
+        border-radius: 8px;
+        color: #fff;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 14px;
+      }
+      .filter-btn:hover {
+        background: rgba(255, 255, 255, 0.2);
+        border-color: #4fc3f7;
+      }
+      .filter-btn.active {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-color: #667eea;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+      }
+
+      /* Breadcrumb */
+      .breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 20px;
+        font-size: 14px;
+        color: #aaa;
+      }
+      .breadcrumb a {
+        color: #4fc3f7;
+        text-decoration: none;
+        transition: color 0.3s ease;
+      }
+      .breadcrumb a:hover {
+        color: #fff;
+      }
+      .breadcrumb .separator {
+        color: #666;
+      }
+      .breadcrumb .current {
+        color: #fff;
+        font-weight: 600;
+      }
+
       /* Loading & Error */
       .loading {
         text-align: center;
@@ -299,7 +353,6 @@
         font-size: 12px;
         color: #aaa;
       }
-      /* Thêm vào phần style */
       .server-selector {
         display: flex;
         gap: 10px;
@@ -354,6 +407,12 @@
           <p style="color: #aaa">Chọn phim để xem chi tiết</p>
         </div>
 
+        <div class="filter-bar">
+          <button class="filter-btn active" data-filter="all">🎬 Tất cả</button>
+          <button class="filter-btn" data-filter="movie">🎞️ Phim Lẻ</button>
+          <button class="filter-btn" data-filter="tv">📺 Phim Bộ</button>
+        </div>
+
         <div id="loadingHome" class="loading">
           ⏳ Đang tải danh sách phim...
         </div>
@@ -363,6 +422,12 @@
 
       <!-- DETAIL PAGE -->
       <div id="detailPage" class="page">
+        <div class="breadcrumb">
+          <a href="#" onclick="showPage('home'); return false;">Trang chủ</a>
+          <span class="separator">›</span>
+          <span class="current" id="breadcrumbMovie">Chi tiết phim</span>
+        </div>
+
         <div class="header">
           <button class="back-btn" onclick="showPage('home')">
             ⬅️ Quay lại
@@ -374,6 +439,19 @@
 
       <!-- PLAYER PAGE -->
       <div id="playerPage" class="page">
+        <div class="breadcrumb">
+          <a href="#" onclick="showPage('home'); return false;">Trang chủ</a>
+          <span class="separator">›</span>
+          <a
+            href="#"
+            onclick="showPage('detail'); return false;"
+            id="breadcrumbMovieLink"
+            >Chi tiết phim</a
+          >
+          <span class="separator">›</span>
+          <span class="current" id="breadcrumbEpisode">Đang phát</span>
+        </div>
+
         <div class="header">
           <button class="back-btn" onclick="showPage('detail')">
             ⬅️ Thông tin phim
@@ -432,6 +510,8 @@
       let useFallback = false;
       let phimApiData = null;
       let currentServer = "ophim";
+      let currentFilter = "all";
+      let allMovieCards = [];
 
       // Elements
       const video = document.getElementById("video");
@@ -478,7 +558,7 @@
 
           const loadPromises = movieConfig.map(async (config) => {
             try {
-              createMovieCard(config); // Chỉ truyền config, không cần item và isFallback
+              createMovieCard(config);
               return { success: true, source: "config" };
             } catch (err) {
               console.error(`Error loading movie ${config.tmdbId}:`, err);
@@ -502,6 +582,7 @@
       function createMovieCard(config) {
         const card = document.createElement("div");
         card.className = "movie-card";
+        card.setAttribute("data-type", config.type);
         card.onclick = () => loadMovieDetail(config);
 
         const thumbUrl =
@@ -529,26 +610,31 @@
     </div>
   `;
 
+        allMovieCards.push(card);
         document.getElementById("movieGrid").appendChild(card);
       }
 
       async function loadMovieDetail(config) {
         showPage("detail");
+
+        // Update breadcrumb
+        document.getElementById("breadcrumbMovie").textContent = config.nameVi;
+        document.getElementById("breadcrumbMovieLink").textContent =
+          config.nameVi;
+
         const detailEl = document.getElementById("movieDetail");
         detailEl.innerHTML =
           '<div class="loading">⏳ Đang tải thông tin phim...</div>';
 
         currentMovieConfig = config;
-        useFallback = false; // Mặc định dùng OPhim
+        useFallback = false;
 
         try {
-          // Load từ OPhim và PhimAPI song song
           const [ophimData, phimApiDataResult] = await Promise.allSettled([
             loadFromOphim(config),
             loadFromPhimApi(config),
           ]);
 
-          // Ưu tiên OPhim
           if (ophimData.status === "fulfilled" && ophimData.value) {
             currentMovieData = ophimData.value;
             useFallback = false;
@@ -562,7 +648,6 @@
             throw new Error("Không thể tải thông tin phim từ cả 2 nguồn");
           }
 
-          // Lưu PhimAPI data nếu có
           if (phimApiDataResult.status === "fulfilled") {
             phimApiData = phimApiDataResult.value;
           }
@@ -625,8 +710,8 @@
               `${data.episodes?.[0]?.server_data?.length || 0} tập`,
             quality: data.movie.quality || "HD",
             lang: data.movie.lang || "Vietsub",
-            thumb_url: data.movie.thumb_url, // Giữ nguyên full URL từ PhimAPI
-            poster_url: data.movie.poster_url, // Giữ nguyên full URL từ PhimAPI
+            thumb_url: data.movie.thumb_url,
+            poster_url: data.movie.poster_url,
             tmdb: { id: config.tmdbId, season: 1 },
             episodes: data.episodes || [],
             category: data.movie.category || [],
@@ -638,12 +723,10 @@
         }
       }
 
-      // Display movie detail
       function displayMovieDetail() {
         const movie = currentMovieData;
         const config = currentMovieConfig;
 
-        // Ưu tiên posterPath từ config, fallback về movie data
         let thumbUrl = config.posterPath;
 
         if (!thumbUrl) {
@@ -717,7 +800,6 @@
         document.getElementById("movieDetail").innerHTML = detailHTML;
       }
 
-      // Start watching
       function startWatching() {
         prepareEpisodes();
         setupServerSelector();
@@ -725,7 +807,6 @@
         loadEpisode(0);
       }
 
-      // Prepare episodes
       function prepareEpisodes() {
         episodes = [];
         const tmdbId = currentMovieData.tmdb.id;
@@ -750,7 +831,6 @@
               audioUrl = `${AUDIO_BASE}movie_tmdb_${tmdbId}/movie_tmdb_${tmdbId}.ogg`;
             }
 
-            // Chỉ lấy tên tập, không lấy filename
             episodes.push({
               name: isSeries ? `Tập ${ep.name}` : currentMovieData.name,
               filename: ep.filename || ep.name,
@@ -765,7 +845,7 @@
           episodes.forEach((ep, idx) => {
             const btn = document.createElement("button");
             btn.className = "episode-btn";
-            btn.textContent = ep.name; // Chỉ hiển thị "Tập X"
+            btn.textContent = ep.name;
             btn.onclick = () => loadEpisode(idx);
             episodeGrid.appendChild(btn);
           });
@@ -775,11 +855,9 @@
         }
       }
 
-      // Thêm sau hàm prepareEpisodes()
       function setupServerSelector() {
         const serverSelector = document.getElementById("serverSelector");
 
-        // Ẩn selector nếu chỉ có 1 server
         if (
           !phimApiData ||
           !currentMovieData.episodes ||
@@ -810,18 +888,15 @@
         const currentTime = video.currentTime;
 
         if (server === "phimapi" && phimApiData) {
-          // Chuyển sang PhimAPI
           currentMovieData = phimApiData;
           useFallback = true;
         } else {
-          // Chuyển về OPhim (cần load lại nếu chưa có)
           useFallback = false;
         }
 
         prepareEpisodes();
         loadEpisode(currentEpisode);
 
-        // Giữ lại thời gian xem
         setTimeout(() => {
           video.currentTime = currentTime;
           if (!video.paused) {
@@ -834,14 +909,15 @@
         }`;
       }
 
-      // Load episode
       function loadEpisode(index) {
         if (index < 0 || index >= episodes.length) return;
 
         currentEpisode = index;
         const ep = episodes[index];
 
-        // Chỉ hiển thị tên tập (Tập X), không hiển thị filename
+        // Update breadcrumb
+        document.getElementById("breadcrumbEpisode").textContent = ep.name;
+
         episodeInfo.textContent = ep.name;
         status.textContent = `Đang tải ${ep.name}...`;
 
@@ -892,14 +968,12 @@
           const videoTime = video.currentTime;
 
           if (useFallback) {
-            // PhimAPI: có ads, cần tính toán skipStart/skipEnd
             const skipStart = currentMovieConfig?.skipStart || 0;
             const skipEnd = currentMovieConfig?.skipEnd || 0;
             const adDuration = skipEnd - skipStart;
             audio.currentTime =
               videoTime >= skipEnd ? videoTime - adDuration : videoTime;
           } else {
-            // OPhim: không có ads, sync trực tiếp
             audio.currentTime = videoTime;
           }
         }
@@ -910,7 +984,6 @@
       video.addEventListener("timeupdate", () => {
         const t = video.currentTime;
 
-        // Chỉ skip ads khi dùng PhimAPI fallback
         if (useFallback) {
           const skipStart = currentMovieConfig?.skipStart || 0;
           const skipEnd = currentMovieConfig?.skipEnd || 0;
@@ -936,7 +1009,6 @@
         const videoTime = video.currentTime;
 
         if (useFallback) {
-          // PhimAPI: có ads, cần tính toán skipStart/skipEnd
           const skipStart = currentMovieConfig?.skipStart || 0;
           const skipEnd = currentMovieConfig?.skipEnd || 0;
           const adDuration = skipEnd - skipStart;
@@ -956,7 +1028,6 @@
             )} (PhimAPI)`;
           }
         } else {
-          // OPhim: không có ads, sync trực tiếp 1:1
           audio.currentTime = videoTime;
           status.textContent = `✅ Đã đồng bộ tại ${formatTime(
             videoTime
@@ -1002,6 +1073,29 @@
       // Initialize
       window.addEventListener("DOMContentLoaded", () => {
         loadMovieList();
+
+        // Setup filter buttons
+        const filterBtns = document.querySelectorAll(".filter-btn");
+        filterBtns.forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const filter = btn.getAttribute("data-filter");
+            currentFilter = filter;
+
+            // Update active button
+            filterBtns.forEach((b) => b.classList.remove("active"));
+            btn.classList.add("active");
+
+            // Filter movies
+            allMovieCards.forEach((card) => {
+              const cardType = card.getAttribute("data-type");
+              if (filter === "all" || cardType === filter) {
+                card.style.display = "block";
+              } else {
+                card.style.display = "none";
+              }
+            });
+          });
+        });
       });
     </script>
   </body>
