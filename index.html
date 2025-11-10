@@ -132,6 +132,35 @@
         overflow: hidden;
       }
 
+      .episode-info {
+        margin-top: 10px;
+      }
+
+      .episode-badge {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        padding: 4px 8px;
+        background: rgba(102, 126, 234, 0.9);
+        border-radius: 8px;
+        font-size: 0.9em;
+        border: 1px solid rgba(102, 126, 234, 0.3);
+      }
+
+      .episode-badge .season-label {
+        color: #ffffff;
+        font-weight: 600;
+      }
+
+      .episode-badge .narrated {
+        color: #ffffff;
+        font-weight: 600;
+      }
+
+      .episode-badge .total {
+        color: #ffffff;
+      }
+
       .movie-type {
         position: absolute;
         top: 10px;
@@ -582,6 +611,24 @@
         }
       }
 
+      // Parse episode info from format "s1: 12"
+      function parseEpisodeInfo(episodeArray) {
+        const result = {};
+        if (!episodeArray) return result;
+
+        episodeArray.forEach((item) => {
+          const match = item.match(/s(\d+):\s*(.+)/i);
+          if (match) {
+            const season = parseInt(match[1]);
+            const episodes = match[2].trim();
+            // Keep as string to preserve "???"
+            result[season] = episodes === "???" ? "???" : parseInt(episodes);
+          }
+        });
+
+        return result;
+      }
+
       function displayMovies(movies) {
         const grid = document.getElementById("moviesGrid");
         const noResults = document.getElementById("noResults");
@@ -594,8 +641,39 @@
 
         noResults.style.display = "none";
         grid.innerHTML = movies
-          .map(
-            (movie) => `
+          .map((movie) => {
+            let episodeInfo = "";
+            if (movie.type === "tv" && movie.narratived && movie.fullEp) {
+              // Parse episode information
+              const narratedSeasons = parseEpisodeInfo(movie.narratived);
+              const fullSeasons = parseEpisodeInfo(movie.fullEp);
+
+              // Get all seasons
+              const allSeasons = new Set([
+                ...Object.keys(narratedSeasons),
+                ...Object.keys(fullSeasons),
+              ]);
+
+              // Create badges for each season
+              const badges = Array.from(allSeasons)
+                .sort((a, b) => a - b)
+                .map((season) => {
+                  const narrated = narratedSeasons[season] || 0;
+                  const full = fullSeasons[season] || "???";
+
+                  return `<div class="episode-badge">
+                    <span class="season-label">S${season}:</span> 
+                    <span class="narrated">${narrated}</span>/<span class="total">${full}</span>
+                  </div>`;
+                })
+                .join("");
+
+              if (badges) {
+                episodeInfo = `<div class="episode-info">${badges}</div>`;
+              }
+            }
+
+            return `
                 <div class="movie-card" onclick="openPlayer('${movie.tmdbId}')">
                     <span class="movie-type">${movie.type}</span>
                     <img class="movie-poster" src="${movie.posterPath}" 
@@ -604,10 +682,11 @@
                     <div class="movie-info">
                         <div class="movie-title-vi">${movie.nameVi}</div>
                         <div class="movie-title-en">${movie.nameEn}</div>
+                        ${episodeInfo}
                     </div>
                 </div>
-            `
-          )
+              `;
+          })
           .join("");
       }
 
