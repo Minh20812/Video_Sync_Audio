@@ -488,6 +488,27 @@
           <h2 id="modalTitleVi"></h2>
           <h3 id="modalTitleEn"></h3>
 
+          <!-- Server Selection (for both movie and tv) -->
+          <div
+            class="episode-row"
+            style="
+              background: #0f0f0f;
+              padding: 20px;
+              border-radius: 10px;
+              margin-bottom: 20px;
+            "
+          >
+            <label>Server:</label>
+            <select id="serverSelect" onchange="changeServer()">
+              <option value="vidlink">VidLink (Default)</option>
+              <option value="videasy">Videasy</option>
+              <option value="vidfast">VidFast</option>
+              <option value="vidsrc">VidSrc.to</option>
+              <option value="vidsrc2">VidSrc2</option>
+              <option value="2embed">2Embed</option>
+            </select>
+          </div>
+
           <!-- Episode Controls for TV Series -->
           <div id="episodeControls" class="episode-controls">
             <h4>📺 Điều Khiển Tập Phim</h4>
@@ -500,16 +521,6 @@
               <button class="episode-btn" onclick="loadEpisode()">
                 Tải Tập
               </button>
-            </div>
-
-            <div class="episode-row">
-              <label>Server:</label>
-              <select id="serverSelect" onchange="changeServer()">
-                <option value="vidlink">VidLink (Default)</option>
-                <option value="vidsrc">VidSrc.to</option>
-                <option value="vidsrc2">VidSrc2</option>
-                <option value="2embed">2Embed</option>
-              </select>
             </div>
 
             <div class="episode-nav">
@@ -590,6 +601,7 @@
       let currentSeason = 1;
       let currentEpisode = 1;
       let currentServer = "vidlink";
+      let hasAutoSynced = false;
 
       // Load movies from GitHub
       async function loadMovies() {
@@ -711,7 +723,8 @@
         currentMovie = moviesData.find((m) => m.tmdbId === tmdbId);
         if (!currentMovie) return;
 
-        // Reset to season 1 episode 1 for TV series
+        hasAutoSynced = false; // Reset auto-sync flag
+
         if (currentMovie.type === "tv") {
           currentSeason = 1;
           currentEpisode = 1;
@@ -738,10 +751,15 @@
         let videoUrl;
 
         if (currentMovie.type === "movie") {
-          // Movie URL format
           switch (currentServer) {
             case "vidlink":
               videoUrl = `https://vidlink.pro/movie/${currentMovie.tmdbId}`;
+              break;
+            case "videasy":
+              videoUrl = `https://player.videasy.net/movie/${currentMovie.tmdbId}`;
+              break;
+            case "vidfast":
+              videoUrl = `https://vidfast.pro/movie/${currentMovie.tmdbId}`;
               break;
             case "vidsrc":
               videoUrl = `https://vidsrc.to/embed/movie/${currentMovie.tmdbId}`;
@@ -754,10 +772,15 @@
               break;
           }
         } else if (currentMovie.type === "tv") {
-          // TV Series URL format with season and episode
           switch (currentServer) {
             case "vidlink":
               videoUrl = `https://vidlink.pro/tv/${currentMovie.tmdbId}/${currentSeason}/${currentEpisode}`;
+              break;
+            case "videasy":
+              videoUrl = `https://player.videasy.net/tv/${currentMovie.tmdbId}/${currentSeason}/${currentEpisode}`;
+              break;
+            case "vidfast":
+              videoUrl = `https://vidfast.pro/tv/${currentMovie.tmdbId}/${currentSeason}/${currentEpisode}`;
               break;
             case "vidsrc":
               videoUrl = `https://vidsrc.to/embed/tv/${currentMovie.tmdbId}/${currentSeason}/${currentEpisode}`;
@@ -782,6 +805,7 @@
         currentEpisode =
           parseInt(document.getElementById("episodeInput").value) || 1;
 
+        hasAutoSynced = false; // Reset auto-sync flag
         loadVideoPlayer();
         loadAudioAutomatically();
       }
@@ -798,13 +822,14 @@
           currentEpisode--;
         } else if (currentSeason > 1) {
           currentSeason--;
-          currentEpisode = 1; // Assume at least 1 episode per season
+          currentEpisode = 1;
         } else {
-          return; // Already at S1E1
+          return;
         }
 
         document.getElementById("seasonInput").value = currentSeason;
         document.getElementById("episodeInput").value = currentEpisode;
+        hasAutoSynced = false; // Reset auto-sync flag
         loadEpisode();
       }
 
@@ -814,6 +839,7 @@
         currentEpisode++;
         document.getElementById("seasonInput").value = currentSeason;
         document.getElementById("episodeInput").value = currentEpisode;
+        hasAutoSynced = false; // Reset auto-sync flag
         loadEpisode();
       }
 
@@ -873,6 +899,7 @@
         audioPlayer.src = "";
         document.body.style.overflow = "auto";
         lastVideoTime = 0;
+        hasAutoSynced = false; // Reset auto-sync flag
         document.getElementById("syncStatus").textContent = "Sẵn sàng";
         document.getElementById("audioUrlDisplay").textContent = "Đang tải...";
       }
@@ -912,18 +939,66 @@
         }
       }
 
-      // Player Events
+      // Player Events - Updated to support VidLink, Videasy, and VidFast
       window.addEventListener("message", (event) => {
-        if (event.origin !== "https://vidlink.pro") return;
+        let eventData = null;
 
-        if (event.data?.type === "PLAYER_EVENT") {
-          const { event: eventType, currentTime } = event.data.data;
+        // VidLink format
+        if (event.origin === "https://vidlink.pro") {
+          if (event.data?.type === "PLAYER_EVENT") {
+            eventData = event.data.data;
+          }
+        }
+
+        // Videasy format
+        if (event.origin === "https://player.videasy.net") {
+          try {
+            const message = JSON.parse(event.data);
+            if (message.type === "PLAYER_EVENT" && message.data) {
+              eventData = message.data;
+            }
+          } catch (e) {
+            // Not JSON, ignore
+          }
+        }
+
+        // VidFast format (multiple domains)
+        const vidfastOrigins = [
+          "https://vidfast.pro",
+          "https://vidfast.in",
+          "https://vidfast.io",
+          "https://vidfast.me",
+          "https://vidfast.net",
+          "https://vidfast.pm",
+          "https://vidfast.xyz",
+        ];
+
+        if (vidfastOrigins.includes(event.origin)) {
+          if (event.data?.type === "PLAYER_EVENT" && event.data.data) {
+            eventData = event.data.data;
+          }
+        }
+
+        // Process event data if found
+        if (eventData) {
+          const { event: eventType, currentTime } = eventData;
           const audioPlayer = document.getElementById("audioPlayer");
 
           document.getElementById("videoTime").textContent =
             formatTime(currentTime);
 
           if (!audioPlayer.src) return;
+
+          // Auto-sync on first play event after 5 seconds
+          if (!hasAutoSynced && eventType === "play" && currentTime > 5) {
+            audioPlayer.currentTime = currentTime;
+            audioPlayer
+              .play()
+              .catch((e) => console.log("Audio autoplay blocked:", e));
+            hasAutoSynced = true;
+            document.getElementById("syncStatus").textContent =
+              "✅ Tự động đồng bộ!";
+          }
 
           switch (eventType) {
             case "play":
