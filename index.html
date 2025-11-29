@@ -452,6 +452,122 @@
       .status-item strong {
         color: #fff;
       }
+
+      .server-buttons {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        background: #0f0f0f;
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+      }
+
+      .server-btn {
+        flex: 1;
+        min-width: 120px;
+        padding: 12px 20px;
+        background: #1a1a1a;
+        border: 2px solid #333;
+        border-radius: 8px;
+        color: #fff;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+      }
+
+      .server-btn:hover {
+        border-color: #667eea;
+        transform: translateY(-2px);
+      }
+
+      .server-btn.active {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-color: #667eea;
+      }
+
+      .floating-controls {
+        position: fixed !important;
+        bottom: 30px !important;
+        right: 30px !important;
+        flex-direction: column !important;
+        gap: 10px !important;
+        z-index: 9999 !important;
+        pointer-events: auto !important;
+      }
+
+      .floating-controls.active {
+        display: flex !important;
+      }
+
+      .floating-controls:not(.active) {
+        display: none !important;
+      }
+
+      .float-btn {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        border: none;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        font-size: 24px;
+        cursor: pointer;
+        box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
+        transition: all 0.3s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .float-btn:hover {
+        transform: scale(1.1);
+        box-shadow: 0 6px 30px rgba(102, 126, 234, 0.6);
+      }
+
+      .audio-control-btn {
+        background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+      }
+
+      .audio-control-btn.playing {
+        background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+      }
+
+      .delay-controls {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        margin-top: 15px;
+        padding: 15px;
+        background: #1a1a1a;
+        border-radius: 8px;
+      }
+
+      .delay-btn {
+        padding: 8px 15px;
+        background: #667eea;
+        border: none;
+        border-radius: 5px;
+        color: white;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+      }
+
+      .delay-btn:hover {
+        background: #764ba2;
+        transform: translateY(-2px);
+      }
+
+      .delay-value {
+        min-width: 100px;
+        text-align: center;
+        font-size: 16px;
+        font-weight: 600;
+        color: #667eea;
+      }
     </style>
   </head>
   <body>
@@ -489,24 +605,35 @@
           <h3 id="modalTitleEn"></h3>
 
           <!-- Server Selection (for both movie and tv) -->
-          <div
-            class="episode-row"
-            style="
-              background: #0f0f0f;
-              padding: 20px;
-              border-radius: 10px;
-              margin-bottom: 20px;
-            "
-          >
-            <label>Server:</label>
-            <select id="serverSelect" onchange="changeServer()">
-              <option value="vidlink">VidLink (Default)</option>
-              <option value="videasy">Videasy</option>
-              <option value="vidfast">VidFast</option>
-              <option value="vidsrc">VidSrc.to</option>
-              <option value="vidsrc2">VidSrc2</option>
-              <option value="2embed">2Embed</option>
-            </select>
+          <div class="server-buttons">
+            <button
+              class="server-btn"
+              data-server="videasy"
+              onclick="selectServer('videasy')"
+            >
+              Videasy
+            </button>
+            <button
+              class="server-btn"
+              data-server="vidlink"
+              onclick="selectServer('vidlink')"
+            >
+              VidLink
+            </button>
+            <button
+              class="server-btn"
+              data-server="vidfast"
+              onclick="selectServer('vidfast')"
+            >
+              VidFast
+            </button>
+            <button
+              class="server-btn active"
+              data-server="vidsrc"
+              onclick="selectServer('vidsrc')"
+            >
+              VidSrc.to
+            </button>
           </div>
 
           <!-- Episode Controls for TV Series -->
@@ -565,6 +692,23 @@
                 />
               </div>
 
+              <div class="delay-controls">
+                <button class="delay-btn" onclick="adjustDelay(-500)">
+                  -500ms
+                </button>
+                <button class="delay-btn" onclick="adjustDelay(-100)">
+                  -100ms
+                </button>
+                <div class="delay-value" id="delayDisplay">0ms</div>
+                <button class="delay-btn" onclick="adjustDelay(100)">
+                  +100ms
+                </button>
+                <button class="delay-btn" onclick="adjustDelay(500)">
+                  +500ms
+                </button>
+                <button class="delay-btn" onclick="resetDelay()">Reset</button>
+              </div>
+
               <audio id="audioPlayer" controls></audio>
 
               <div class="status">
@@ -591,6 +735,21 @@
       </div>
     </div>
 
+    <!-- Floating Controls -->
+    <div class="floating-controls">
+      <button
+        class="float-btn audio-control-btn"
+        id="floatAudioBtn"
+        onclick="toggleFloatAudio()"
+        title="Play/Pause Audio"
+      >
+        ▶️
+      </button>
+      <button class="float-btn" onclick="scrollToTop()" title="Lên đầu trang">
+        ⬆️
+      </button>
+    </div>
+
     <script>
       let moviesData = [];
       let filteredMovies = [];
@@ -600,7 +759,7 @@
       let lastVideoTime = 0;
       let currentSeason = 1;
       let currentEpisode = 1;
-      let currentServer = "vidlink";
+      let currentServer = "vidsrc";
       let hasAutoSynced = false;
 
       // Load movies from GitHub
@@ -723,12 +882,23 @@
         currentMovie = moviesData.find((m) => m.tmdbId === tmdbId);
         if (!currentMovie) return;
 
-        hasAutoSynced = false; // Reset auto-sync flag
+        hasAutoSynced = false;
 
         if (currentMovie.type === "tv") {
-          currentSeason = 1;
+          // Tìm season mới nhất
+          const narratedSeasons = parseEpisodeInfo(currentMovie.narratived);
+          const fullSeasons = parseEpisodeInfo(currentMovie.fullEp);
+          const allSeasons = [
+            ...Object.keys(narratedSeasons),
+            ...Object.keys(fullSeasons),
+          ].map(Number);
+
+          const latestSeason =
+            allSeasons.length > 0 ? Math.max(...allSeasons) : 1;
+
+          currentSeason = latestSeason;
           currentEpisode = 1;
-          document.getElementById("seasonInput").value = 1;
+          document.getElementById("seasonInput").value = latestSeason;
           document.getElementById("episodeInput").value = 1;
           document.getElementById("episodeControls").classList.add("active");
         } else {
@@ -743,8 +913,19 @@
           currentMovie.nameEn;
         document.getElementById("playerModal").classList.add("active");
         document.body.style.overflow = "hidden";
+        document.querySelector(".floating-controls").classList.add("active");
 
         loadAudioAutomatically();
+        console.log(
+          "Floating controls:",
+          document.querySelector(".floating-controls")
+        );
+        console.log(
+          "Has active class:",
+          document
+            .querySelector(".floating-controls")
+            .classList.contains("active")
+        );
       }
 
       function loadVideoPlayer() {
@@ -764,12 +945,6 @@
             case "vidsrc":
               videoUrl = `https://vidsrc.to/embed/movie/${currentMovie.tmdbId}`;
               break;
-            case "vidsrc2":
-              videoUrl = `https://vidsrc2.to/embed/movie/${currentMovie.tmdbId}`;
-              break;
-            case "2embed":
-              videoUrl = `https://www.2embed.cc/embed/${currentMovie.tmdbId}`;
-              break;
           }
         } else if (currentMovie.type === "tv") {
           switch (currentServer) {
@@ -784,12 +959,6 @@
               break;
             case "vidsrc":
               videoUrl = `https://vidsrc.to/embed/tv/${currentMovie.tmdbId}/${currentSeason}/${currentEpisode}`;
-              break;
-            case "vidsrc2":
-              videoUrl = `https://vidsrc2.to/embed/tv/${currentMovie.tmdbId}/${currentSeason}/${currentEpisode}`;
-              break;
-            case "2embed":
-              videoUrl = `https://www.2embed.cc/embedtv/${currentMovie.tmdbId}&s=${currentSeason}&e=${currentEpisode}`;
               break;
           }
         }
@@ -810,9 +979,55 @@
         loadAudioAutomatically();
       }
 
-      function changeServer() {
-        currentServer = document.getElementById("serverSelect").value;
+      function selectServer(server) {
+        currentServer = server;
+
+        // Update button states
+        document.querySelectorAll(".server-btn").forEach((btn) => {
+          btn.classList.remove("active");
+        });
+        document
+          .querySelector(`[data-server="${server}"]`)
+          .classList.add("active");
+
         loadVideoPlayer();
+      }
+
+      function toggleFloatAudio() {
+        const audioPlayer = document.getElementById("audioPlayer");
+        const floatBtn = document.getElementById("floatAudioBtn");
+
+        if (audioPlayer.paused) {
+          audioPlayer
+            .play()
+            .then(() => {
+              floatBtn.textContent = "⏸️";
+              floatBtn.classList.add("playing");
+            })
+            .catch((e) => console.log("Audio play error:", e));
+        } else {
+          audioPlayer.pause();
+          floatBtn.textContent = "▶️";
+          floatBtn.classList.remove("playing");
+        }
+      }
+
+      function scrollToTop() {
+        const modal = document.getElementById("playerModal");
+
+        if (modal.classList.contains("active")) {
+          // Nếu modal đang mở, scroll modal
+          modal.scrollTo({
+            top: 0,
+            behavior: "smooth",
+          });
+        } else {
+          // Nếu không, scroll trang chính
+          window.scrollTo({
+            top: 0,
+            behavior: "smooth",
+          });
+        }
       }
 
       function previousEpisode() {
@@ -901,6 +1116,11 @@
         lastVideoTime = 0;
         hasAutoSynced = false; // Reset auto-sync flag
         document.getElementById("syncStatus").textContent = "Sẵn sàng";
+        document.querySelector(".floating-controls").classList.remove("active");
+        const floatBtn = document.getElementById("floatAudioBtn");
+        floatBtn.textContent = "▶️";
+        floatBtn.classList.remove("playing");
+        document.getElementById("delayDisplay").textContent = "0ms";
         document.getElementById("audioUrlDisplay").textContent = "Đang tải...";
       }
 
@@ -917,6 +1137,44 @@
 
       function updateOffset(value) {
         audioOffset = parseInt(value) / 1000;
+        document.getElementById("delayDisplay").textContent = value + "ms";
+      }
+
+      function adjustDelay(milliseconds) {
+        const offsetInput = document.getElementById("audioOffset");
+        const currentOffset = parseInt(offsetInput.value) || 0;
+        const newOffset = currentOffset + milliseconds;
+
+        offsetInput.value = newOffset;
+        audioOffset = newOffset / 1000;
+
+        // Update display
+        document.getElementById("delayDisplay").textContent = newOffset + "ms";
+
+        // Sync immediately
+        if (lastVideoTime > 0) {
+          syncAudioToVideo(lastVideoTime);
+        }
+
+        // Show feedback
+        const status = milliseconds > 0 ? "⏩" : "⏪";
+        document.getElementById(
+          "syncStatus"
+        ).textContent = `${status} Điều chỉnh: ${
+          milliseconds > 0 ? "+" : ""
+        }${milliseconds}ms`;
+      }
+
+      function resetDelay() {
+        document.getElementById("audioOffset").value = 0;
+        audioOffset = 0;
+        document.getElementById("delayDisplay").textContent = "0ms";
+
+        if (lastVideoTime > 0) {
+          syncAudioToVideo(lastVideoTime);
+        }
+
+        document.getElementById("syncStatus").textContent = "🔄 Reset delay";
       }
 
       function syncAudioToVideo(videoTime) {
@@ -1047,6 +1305,22 @@
             document.getElementById("syncDiff").textContent =
               Math.round(diff * 1000) + "ms";
           }
+        });
+
+      document
+        .getElementById("audioPlayer")
+        .addEventListener("play", function () {
+          const floatBtn = document.getElementById("floatAudioBtn");
+          floatBtn.textContent = "⏸️";
+          floatBtn.classList.add("playing");
+        });
+
+      document
+        .getElementById("audioPlayer")
+        .addEventListener("pause", function () {
+          const floatBtn = document.getElementById("floatAudioBtn");
+          floatBtn.textContent = "▶️";
+          floatBtn.classList.remove("playing");
         });
 
       // Close modal on Escape
